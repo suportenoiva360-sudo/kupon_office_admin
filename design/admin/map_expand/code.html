@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Velocity Admin - Mapa Ao Vivo</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Montserrat:wght@700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#313030",
+                        "secondary-fixed": "#ffdbcc",
+                        "secondary-container": "#ea6b1e",
+                        "on-primary-fixed": "#351000",
+                        "on-surface": "#e5e2e1",
+                        "primary-container": "#ff6b00",
+                        "on-secondary": "#562000",
+                        "tertiary-container": "#af947c",
+                        "inverse-primary": "#a04100",
+                        "inverse-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed": "#281808",
+                        "surface-container-low": "#1c1b1b",
+                        "tertiary-fixed-dim": "#dfc1a8",
+                        "tertiary": "#dfc1a8",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary-fixed-dim": "#ffb693",
+                        "surface-tint": "#ffb693",
+                        "background": "#131313",
+                        "surface-dim": "#131313",
+                        "primary": "#ffb693",
+                        "on-surface-variant": "#e2bfb0",
+                        "on-tertiary-container": "#402d1b",
+                        "on-primary-container": "#572000",
+                        "secondary": "#ffb693",
+                        "primary-fixed-dim": "#ffb693",
+                        "outline-variant": "#5a4136",
+                        "on-primary": "#561f00",
+                        "on-tertiary-fixed-variant": "#57432f",
+                        "surface-bright": "#3a3939",
+                        "on-tertiary": "#3f2d1b",
+                        "on-secondary-fixed": "#351000",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "error-container": "#93000a",
+                        "outline": "#a98a7d",
+                        "surface-container": "#201f1f",
+                        "tertiary-fixed": "#fcddc2",
+                        "surface-container-high": "#2a2a2a",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#131313",
+                        "on-background": "#e5e2e1",
+                        "surface-variant": "#353534",
+                        "primary-fixed": "#ffdbcc",
+                        "on-secondary-container": "#4b1b00",
+                        "surface-container-highest": "#353534"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-margin": "24px",
+                        "safe-area-bottom": "32px",
+                        "touch-target-min": "48px",
+                        "unit": "8px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Montserrat"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "title-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "title-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .pulse-pin { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 107, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 0, 0); } }
+        .glass-panel { background: rgba(26, 26, 26, 0.7); backdrop-filter: blur(12px); border: 1px solid #2A2A2A; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-lg min-h-screen overflow-hidden antialiased">
+<!-- SideNavBar -->
+<nav class="h-screen w-64 fixed left-0 top-0 border-r border-outline-variant dark:border-outline-variant bg-surface-container-lowest z-50">
+<div class="flex flex-col h-full py-8 px-4">
+<div class="mb-12 px-4 flex items-center gap-4">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="A small circular avatar placeholder representing an administrator for a sleek, high-tech dashboard. The image should be abstract and minimalist, using deep blacks and bright orange neon accents to match the overall dark mode high-octane aesthetic. Soft lighting, modern corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpN455b4d_sjNAS-Jv7EJsE5Tngr78krgSuSRTSKFCgWu9hfSTpOoKEhQglDXX8XbHvt1JpJ71b6GcfAobAzyLoWd2p_edp_0-pdNVbu2WT0_OOYDanogejgb9Sm0wbK6o10zk-MDjl_BCWe094Dao7T_sBrTfcjGlJ7zVlJXh30xjbgyyt3V8GZobVlmbIFAp1xmAaaIcFOZrkhLIaUHfixMFnWgKnB26tLvVFjzYcS35bERAT_2G"/>
+<div>
+<h1 class="font-display-lg text-display-lg font-bold text-primary dark:text-primary !text-2xl !leading-tight">Velocity</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Admin Terminal</p>
+</div>
+</div>
+<ul class="flex flex-col gap-2 flex-grow">
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span>Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>Drivers</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-primary font-bold bg-secondary-container/10 border-r-4 border-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span>Live Map</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span>Fares</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span>Settings</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto">
+<button class="w-full py-3 px-4 rounded-lg bg-surface-container-high text-on-surface font-title-md hover:bg-surface-variant transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">help</span>
+                    Support Portal
+                </button>
+</div>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant shadow-sm z-40">
+<div class="flex justify-between items-center px-8 h-full">
+<div class="font-title-md text-title-md font-bold text-on-surface">Mapa Ao Vivo (São Paulo)</div>
+<div class="flex items-center gap-6">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer hover:opacity-80">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer hover:opacity-80">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer hover:opacity-80">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-64 mt-16 h-[calc(100vh-4rem)] relative bg-[#0a0a0a]">
+<!-- The Map Background -->
+<div class="absolute inset-0 w-full h-full" data-alt="A sprawling, high-fidelity dark mode satellite view of a vast metropolitan city at night, specifically stylized for a premium ride-sharing app dashboard. The map is rendered in deep charcoal greys and blacks, with intricate road networks faintly glowing. There are multiple bright neon orange teardrop pins scattered across the map, indicating vehicle locations. The overall mood is sleek, high-tech, and automotive-inspired, avoiding standard bright map tiles. No text labels." data-location="São Paulo" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCMnyfCnhJ19ZA2D94wPSusMFBCdnChhKVtOXZTISYAXuYPG3sbY7bWxLW4DlkCXKYJeGBDnlZTklUoBIy23QgDb_d9oAe-P-ghW2qNfYhEmQA893YtP6GY7pOuluVbxSdKbOsAr5apmvRrdatsORL2jUjBnw3OmYhGRpjRKuYVjjK_9TciGZrC7D04Ak4MDTqqVp5COPPcJkcUQShADdX_jxQ37XV-76EJPodTMMy4MTROaqv64wxF')"></div>
+<!-- Simulated Map Pins (Absolute positioned over the map) -->
+<div class="absolute top-[30%] left-[40%] w-4 h-4 bg-primary-container rounded-full pulse-pin shadow-[0_0_15px_rgba(255,107,0,0.8)]"></div>
+<div class="absolute top-[50%] left-[60%] w-4 h-4 bg-primary-container rounded-full pulse-pin shadow-[0_0_15px_rgba(255,107,0,0.8)]"></div>
+<div class="absolute top-[70%] left-[30%] w-4 h-4 bg-primary-container rounded-full pulse-pin shadow-[0_0_15px_rgba(255,107,0,0.8)]"></div>
+<div class="absolute top-[20%] left-[70%] w-4 h-4 bg-primary-container rounded-full pulse-pin shadow-[0_0_15px_rgba(255,107,0,0.8)]"></div>
+<!-- Overlays Container -->
+<div class="absolute inset-0 p-6 pointer-events-none flex justify-between">
+<!-- Left Column: Analytics & Zones -->
+<div class="w-80 flex flex-col gap-6 pointer-events-auto h-full pb-6">
+<!-- Live Analytics Panel -->
+<div class="glass-panel rounded-xl p-5 shadow-lg flex flex-col gap-4">
+<h2 class="font-title-md text-title-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">monitoring</span>
+                        Live Analytics
+                    </h2>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center pb-2 border-b border-surface-variant">
+<span class="font-body-sm text-on-surface-variant">Motoristas Ativos</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary">1,240</span>
+</div>
+<div class="flex justify-between items-center pb-2 border-b border-surface-variant">
+<span class="font-body-sm text-on-surface-variant">Corridas Hoje</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">4.8k</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-on-surface-variant">Tempo Médio Espera</span>
+<span class="font-title-md text-title-md text-on-surface">4m</span>
+</div>
+</div>
+</div>
+<!-- High Demand Zones -->
+<div class="glass-panel rounded-xl p-5 shadow-lg flex flex-col gap-4">
+<h2 class="font-title-md text-title-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-error">local_fire_department</span>
+                        Zonas de Alta Demanda
+                    </h2>
+<div class="flex flex-col gap-3">
+<div class="bg-surface-container p-3 rounded-lg border border-surface-variant flex justify-between items-center">
+<span class="font-body-sm font-semibold text-on-surface">Centro (Downtown)</span>
+<span class="bg-error-container text-on-error-container font-label-caps text-label-caps px-2 py-1 rounded">+1.8x</span>
+</div>
+<div class="bg-surface-container p-3 rounded-lg border border-surface-variant flex justify-between items-center">
+<span class="font-body-sm font-semibold text-on-surface">Aeroporto Internacional</span>
+<span class="bg-primary-container/20 text-primary font-label-caps text-label-caps px-2 py-1 rounded">+1.5x</span>
+</div>
+<div class="bg-surface-container p-3 rounded-lg border border-surface-variant flex justify-between items-center">
+<span class="font-body-sm font-semibold text-on-surface">Vila Madalena</span>
+<span class="bg-surface-variant text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded">+1.2x</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Filters & Logs -->
+<div class="w-96 flex flex-col gap-6 pointer-events-auto h-full pb-6 items-end">
+<!-- Vehicle Filters -->
+<div class="glass-panel rounded-xl p-2 flex gap-2 shadow-lg">
+<button class="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface font-body-sm hover:bg-surface-variant transition-colors border border-transparent">
+                        Standard
+                    </button>
+<button class="px-4 py-2 rounded-lg bg-primary-container/10 text-primary font-body-sm border border-primary-container shadow-[0_0_10px_rgba(255,107,0,0.1)]">
+                        Comfort
+                    </button>
+<button class="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface font-body-sm hover:bg-surface-variant transition-colors border border-transparent">
+                        Luxury
+                    </button>
+</div>
+<!-- Real-time Event Log -->
+<div class="glass-panel rounded-xl p-5 shadow-lg flex flex-col gap-4 w-full mt-auto mb-0 max-h-[300px]">
+<div class="flex justify-between items-center">
+<h2 class="font-title-md text-title-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">list_alt</span>
+                            Log de Eventos
+                        </h2>
+<span class="w-2 h-2 rounded-full bg-primary-container pulse-pin"></span>
+</div>
+<div class="overflow-y-auto pr-2 space-y-3 font-body-sm">
+<!-- Log Item -->
+<div class="flex gap-3 items-start border-l-2 border-primary-container pl-3">
+<span class="text-on-surface-variant text-xs mt-1 shrink-0">14:32</span>
+<div>
+<p class="text-on-surface font-medium">Corrida Iniciada</p>
+<p class="text-on-surface-variant text-xs">Comfort • Paulista -&gt; Congonhas</p>
+</div>
+</div>
+<!-- Log Item -->
+<div class="flex gap-3 items-start border-l-2 border-surface-variant pl-3">
+<span class="text-on-surface-variant text-xs mt-1 shrink-0">14:31</span>
+<div>
+<p class="text-on-surface font-medium">Motorista Online</p>
+<p class="text-on-surface-variant text-xs">Standard • ID: 8943</p>
+</div>
+</div>
+<!-- Log Item -->
+<div class="flex gap-3 items-start border-l-2 border-primary-container pl-3">
+<span class="text-on-surface-variant text-xs mt-1 shrink-0">14:28</span>
+<div>
+<p class="text-on-surface font-medium">Corrida Concluída</p>
+<p class="text-on-surface-variant text-xs">Luxury • R$ 145.50</p>
+</div>
+</div>
+<!-- Log Item -->
+<div class="flex gap-3 items-start border-l-2 border-error pl-3">
+<span class="text-on-surface-variant text-xs mt-1 shrink-0">14:25</span>
+<div>
+<p class="text-error font-medium">Alerta de Tráfego</p>
+<p class="text-on-surface-variant text-xs">Atrasos severos na Marginal Pinheiros</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

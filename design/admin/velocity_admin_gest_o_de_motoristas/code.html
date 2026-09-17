@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Velocity Admin - Driver Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#5a4136",
+                    "on-primary": "#561f00",
+                    "surface-variant": "#353534",
+                    "tertiary-container": "#af947c",
+                    "tertiary-fixed-dim": "#dfc1a8",
+                    "on-primary-fixed": "#351000",
+                    "surface-container": "#201f1f",
+                    "secondary-container": "#ea6b1e",
+                    "on-secondary-fixed-variant": "#7a3000",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#351000",
+                    "tertiary": "#dfc1a8",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-background": "#e5e2e1",
+                    "primary-container": "#ff6b00",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-secondary": "#562000",
+                    "surface": "#131313",
+                    "surface-container-high": "#2a2a2a",
+                    "secondary-fixed": "#ffdbcc",
+                    "outline": "#a98a7d",
+                    "on-error-container": "#ffdad6",
+                    "on-primary-container": "#572000",
+                    "inverse-on-surface": "#313030",
+                    "background": "#131313",
+                    "on-error": "#690005",
+                    "primary": "#ffb693",
+                    "on-surface-variant": "#e2bfb0",
+                    "secondary": "#ffb693",
+                    "inverse-primary": "#a04100",
+                    "surface-container-low": "#1c1b1b",
+                    "surface-bright": "#3a3939",
+                    "error": "#ffb4ab",
+                    "on-tertiary-container": "#402d1b",
+                    "on-tertiary": "#3f2d1b",
+                    "surface-tint": "#ffb693",
+                    "primary-fixed-dim": "#ffb693",
+                    "surface-dim": "#131313",
+                    "on-tertiary-fixed-variant": "#57432f",
+                    "on-surface": "#e5e2e1",
+                    "primary-fixed": "#ffdbcc",
+                    "on-tertiary-fixed": "#281808",
+                    "on-secondary-container": "#4b1b00",
+                    "tertiary-fixed": "#fcddc2",
+                    "surface-container-highest": "#353534",
+                    "secondary-fixed-dim": "#ffb693",
+                    "inverse-surface": "#e5e2e1"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "gutter": "16px",
+                    "safe-area-bottom": "32px",
+                    "touch-target-min": "48px",
+                    "container-margin": "24px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Montserrat"],
+                    "display-lg": ["Montserrat"],
+                    "headline-lg-mobile": ["Montserrat"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Montserrat"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { background-color: #0A0A0A; color: #e5e2e1; }
+        .glass-card {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(42, 42, 42, 0.5);
+        }
+        .primary-glow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.3);
+            background: linear-gradient(180deg, #FF6B00 0%, #E65C00 100%);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .status-online { background-color: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
+        .status-offline { background-color: #9E9E9E; }
+        .status-ontrip { background-color: #FFB693; box-shadow: 0 0 8px #FFB693; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #131313; }
+        ::-webkit-scrollbar-thumb { background: #353534; border-radius: 10px; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="font-Inter antialiased overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low shadow-sm flex flex-col py-gutter px-4 z-50">
+<div class="mb-10 px-2">
+<h1 class="font-headline-lg-mobile text-primary tracking-tighter">Velocity Admin</h1>
+<p class="text-on-surface-variant font-Inter text-body-sm opacity-70">Operations Hub</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-semibold active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>Drivers</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">map</span>
+<span>Trip Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span>Fares</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-2">
+<button class="w-full py-3 px-4 bg-error-container text-on-error-container rounded-xl flex items-center justify-center gap-2 font-bold hover:brightness-110 transition-all">
+<span class="material-symbols-outlined">emergency_share</span>
+                Emergency Dispatch
+            </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 h-screen flex flex-col bg-surface overflow-hidden">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center h-16 px-container-margin sticky top-0 z-40 bg-surface border-b border-outline-variant">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-full py-2 pl-10 pr-4 text-body-sm focus:ring-2 focus:ring-primary-container text-on-surface" placeholder="Search drivers by name, ID or license..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300">
+<span class="material-symbols-outlined text-on-surface-variant">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline">
+<img class="w-full h-full object-cover" data-alt="Professional close-up portrait of a tech company administrator, dark studio lighting with orange rim light accents, cinematic corporate style, sharp focus on eyes, minimalist aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkGYB9kakjneEcUJc7bNAu1McPMdI76jSx9WuaMgC8KHOJ76yghC2V1DgnGw_iKMyLhw7UrxQHLHIPZqt-mZgS2EojyeA22PnZoA5ZX2GsUB7VDT0Cj5YsM5s7G8N9hvK9KaSbUrduGBHQaf_tPMSXQ0ahbL8SWqUDVyr7rX5494bhRItSKMbEqDq023v-9bjsSQziPE4ScY8n167gOzongh_eEDnknBpbiBAoPGK7HghGvvXOa-LZ"/>
+</div>
+<span class="text-body-sm font-semibold group-hover:text-primary transition-colors">Admin Hub</span>
+</div>
+</div>
+</header>
+<!-- Driver Dashboard Content -->
+<div class="flex-1 overflow-y-auto p-gutter lg:p-8">
+<!-- Page Header Actions -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+<div>
+<h2 class="font-headline-lg text-on-surface tracking-tight">Driver Fleet Management</h2>
+<p class="text-on-surface-variant">Monitor and manage 248 active drivers in your region.</p>
+</div>
+<button class="primary-glow flex items-center gap-2 px-6 py-3 rounded-full text-surface font-bold active:scale-95 transition-all">
+<span class="material-symbols-outlined">person_add</span>
+                    Add New Driver
+                </button>
+</div>
+<!-- Filters & Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="glass-card p-6 rounded-2xl">
+<p class="text-label-caps text-on-surface-variant opacity-60 mb-1">ONLINE NOW</p>
+<div class="flex items-end gap-2">
+<h3 class="text-headline-lg text-primary">142</h3>
+<span class="text-body-sm text-green-500 mb-2">+12% vs last hour</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl">
+<p class="text-label-caps text-on-surface-variant opacity-60 mb-1">AVERAGE RATING</p>
+<div class="flex items-end gap-2">
+<h3 class="text-headline-lg text-primary">4.85</h3>
+<div class="flex mb-2">
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl">
+<p class="text-label-caps text-on-surface-variant opacity-60 mb-1">ACTIVE ON TRIPS</p>
+<div class="flex items-end gap-2">
+<h3 class="text-headline-lg text-primary">89</h3>
+<span class="text-body-sm text-on-surface-variant mb-2">Current Occupancy: 62%</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl">
+<p class="text-label-caps text-on-surface-variant opacity-60 mb-1">PENDING APPROVAL</p>
+<div class="flex items-end gap-2">
+<h3 class="text-headline-lg text-primary">07</h3>
+<span class="text-body-sm text-secondary mb-2 underline cursor-pointer">Review Queues</span>
+</div>
+</div>
+</div>
+<!-- Filters Bar -->
+<div class="flex flex-wrap items-center gap-4 mb-6">
+<div class="flex bg-surface-container-high rounded-xl p-1">
+<button class="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg text-body-sm font-semibold">All Drivers</button>
+<button class="px-4 py-2 text-on-surface-variant hover:text-on-surface text-body-sm">Online</button>
+<button class="px-4 py-2 text-on-surface-variant hover:text-on-surface text-body-sm">On Trip</button>
+<button class="px-4 py-2 text-on-surface-variant hover:text-on-surface text-body-sm">Offline</button>
+</div>
+<div class="relative">
+<select class="appearance-none bg-surface-container-high border-none rounded-xl py-2.5 pl-4 pr-10 text-body-sm text-on-surface focus:ring-2 focus:ring-primary-container cursor-pointer">
+<option>All Vehicle Types</option>
+<option>Velocity X (Standard)</option>
+<option>Velocity XL (Large)</option>
+<option>Velocity Black (Luxury)</option>
+<option>Velocity Green (Electric)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+<button class="ml-auto flex items-center gap-2 px-4 py-2.5 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">tune</span>
+                    Advanced Filters
+                </button>
+</div>
+<!-- Drivers Table -->
+<div class="glass-card rounded-2xl overflow-hidden border border-outline-variant">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-highest">
+<tr>
+<th class="px-6 py-4 text-label-caps text-on-surface-variant">Driver Name</th>
+<th class="px-6 py-4 text-label-caps text-on-surface-variant">Vehicle Type</th>
+<th class="px-6 py-4 text-label-caps text-on-surface-variant">Rating</th>
+<th class="px-6 py-4 text-label-caps text-on-surface-variant text-center">Total Trips</th>
+<th class="px-6 py-4 text-label-caps text-on-surface-variant">Total Earnings</th>
+<th class="px-6 py-4 text-label-caps text-on-surface-variant">Status</th>
+<th class="px-6 py-4 text-label-caps text-on-surface-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-high transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Portrait of a diverse male driver in a professional uniform, soft morning sunlight, urban city background out of focus, high-end car sharing company aesthetic, vibrant orange highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoh_hzrZGtiMIb6A7SRTnKAOJFv1sr_j1JiZODomz1utYxM9guWoIP8VOaaddTNmUS-infL5RFEs2aUqIdS4NxFWZpbzHejOTrQFrfHZZY_8-1Ve0AAQhGgss_v8wUrIT0JZ42NICKgx08mohOxiHPkVSWreBge9bNLGN2ikpR-3CysxyGAiwpCqtGMkMUy5vnwDzJNP6_j-yfSFE6fdV4HKB4GTFg6HGF9fgDiOHR--UD4ExCfAsx"/>
+</div>
+<div>
+<div class="text-body-lg font-semibold text-on-surface">Marcus Thorne</div>
+<div class="text-body-sm text-on-surface-variant opacity-60">ID: #VL-8821</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 rounded-full bg-surface-container text-primary text-[12px] font-bold border border-primary/20 uppercase tracking-wider">Velocity Black</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1">
+<span class="font-bold text-on-surface">4.92</span>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="font-Inter">1,248</span>
+</td>
+<td class="px-6 py-4 text-on-surface font-semibold">
+                                    $42,150.00
+                                </td>
+<td class="px-6 py-4">
+<div class="flex items-center">
+<span class="status-dot status-online"></span>
+<span class="text-body-sm text-on-surface">Online</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 rounded-lg hover:bg-surface-variant text-on-surface-variant transition-colors" title="Message">
+<span class="material-symbols-outlined">chat</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-surface-variant text-primary transition-colors" title="View Details">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-high transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-outline-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a focused female driver, professional lighting, urban city night lights reflected in the background, cool tones with sharp orange accents, minimalist high-tech ride-sharing brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtKHFXiEZ5KDj32lPTEFgOx4IX5CRt-Uq3T3AkRpoGwwV8VhLv1ErD9BLitrU27xC5SbqPc66ucWo9hWD6sb2AJPVxgkcg1Rmuo5HCkvPUowuRDKDwSXATMglNLnte76rb0Jzw1t8IZXOJ0ISApbUZeeHHySHczPTS7WLeGRkUJWIIKuLwV2kj5dba1GSECJH2ovlTa536eRTbIJG0AMMDjY_CwONrpatqV6W7xPd4TSXJioi8eQPE"/>
+</div>
+<div>
+<div class="text-body-lg font-semibold text-on-surface">Elena Rodriguez</div>
+<div class="text-body-sm text-on-surface-variant opacity-60">ID: #VL-3402</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 rounded-full bg-surface-container text-tertiary text-[12px] font-bold border border-tertiary/20 uppercase tracking-wider">Velocity Green</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1">
+<span class="font-bold text-on-surface">4.88</span>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="font-Inter">842</span>
+</td>
+<td class="px-6 py-4 text-on-surface font-semibold">
+                                    $28,400.50
+                                </td>
+<td class="px-6 py-4">
+<div class="flex items-center">
+<span class="status-dot status-ontrip"></span>
+<span class="text-body-sm text-on-surface">On Trip</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 rounded-lg hover:bg-surface-variant text-on-surface-variant transition-colors" title="Message">
+<span class="material-symbols-outlined">chat</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-surface-variant text-primary transition-colors" title="View Details">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-high transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-outline-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Portrait of a smiling mature male driver, friendly expression, natural outdoor lighting, parking area background, sophisticated automotive interface aesthetic, vibrant corporate orange color scheme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAx-keUKjjjPbYj_OZCueUalzactYm72wA4kcrPg9RYUhDBZYVaF5oyYzmXiedqZRTNFyvDNx6bCwgcezQa5aooErzvN1w9or37CawUzROS2e3x9rZLz7p_oRbj6aNU4kDKTJHhmeuvHE7h49uX1HcvTyacWh-9Ys6_ll4XuVvSxX637xFUXA661PYJZiHXP3eEjEDbFeK-4PwiubsLVW0tY2VwfmFy46upjQprz6qM1muA73490TRJ"/>
+</div>
+<div>
+<div class="text-body-lg font-semibold text-on-surface">Samuel Park</div>
+<div class="text-body-sm text-on-surface-variant opacity-60">ID: #VL-5612</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 rounded-full bg-surface-container text-on-surface-variant text-[12px] font-bold border border-outline-variant uppercase tracking-wider">Velocity X</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1">
+<span class="font-bold text-on-surface">4.75</span>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="font-Inter">2,105</span>
+</td>
+<td class="px-6 py-4 text-on-surface font-semibold">
+                                    $61,820.00
+                                </td>
+<td class="px-6 py-4">
+<div class="flex items-center">
+<span class="status-dot status-offline"></span>
+<span class="text-body-sm text-on-surface-variant">Offline</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 rounded-lg hover:bg-surface-variant text-on-surface-variant transition-colors" title="Message">
+<span class="material-symbols-outlined">chat</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-surface-variant text-primary transition-colors" title="View Details">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-high transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Portrait of a young energetic female driver, urban street fashion, daylight, modern city architecture in background, high-contrast digital photography style with orange color pops, premium ride sharing brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOxPkfojAMXTqqVd2P0oIGKWiopfF5ssPu_xBpy7Ug7Z3MlXbooNWGe_otnbNkIi_wViIzM_OG_FzFjLJjfGTvOJV7-llWq4uIBSE5Luo7CGty9DJ7PDU4JNcOfb7P7XxB8Cg2jX6bQeXG_9GBMrV9QK8X5MfhPEPIWWoFrpFn7-oXcJ7KVmhEWxp-H7PtotoSIathzgjIsm3UTNFrbS0AunftkbJoG8BC3YBHMNTHv9dBYIa1kype"/>
+</div>
+<div>
+<div class="text-body-lg font-semibold text-on-surface">Jordan Smith</div>
+<div class="text-body-sm text-on-surface-variant opacity-60">ID: #VL-1192</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 rounded-full bg-surface-container text-secondary text-[12px] font-bold border border-secondary/20 uppercase tracking-wider">Velocity XL</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1">
+<span class="font-bold text-on-surface">4.96</span>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="font-Inter">156</span>
+</td>
+<td class="px-6 py-4 text-on-surface font-semibold">
+                                    $5,210.00
+                                </td>
+<td class="px-6 py-4">
+<div class="flex items-center">
+<span class="status-dot status-online"></span>
+<span class="text-body-sm text-on-surface">Online</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 rounded-lg hover:bg-surface-variant text-on-surface-variant transition-colors" title="Message">
+<span class="material-symbols-outlined">chat</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-surface-variant text-primary transition-colors" title="View Details">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="bg-surface-container-low px-6 py-4 flex items-center justify-between border-t border-outline-variant">
+<span class="text-body-sm text-on-surface-variant">Showing <span class="font-bold text-on-surface">1 - 4</span> of <span class="font-bold text-on-surface">248</span> drivers</span>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg border border-outline-variant hover:bg-surface-container-high transition-colors text-on-surface-variant disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="px-4 py-2 rounded-lg bg-primary-container text-on-primary-container font-bold text-body-sm">1</button>
+<button class="px-4 py-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant text-body-sm">2</button>
+<button class="px-4 py-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant text-body-sm">3</button>
+<span class="px-2 text-on-surface-variant self-center">...</span>
+<button class="px-4 py-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant text-body-sm">62</button>
+<button class="p-2 rounded-lg border border-outline-variant hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Interactive Micro-Interactions -->
+<script>
+        document.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('click', function(e) {
+                // Prevent trigger if clicking on action buttons
+                if (e.target.closest('button')) return;
+                
+                // Add a visual flash effect on selection
+                this.classList.add('bg-primary-container/10');
+                setTimeout(() => {
+                    this.classList.remove('bg-primary-container/10');
+                }, 300);
+            });
+        });
+
+        // Search Bar focus effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-[1.01]');
+            searchInput.parentElement.classList.add('transition-transform');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-[1.01]');
+        });
+    </script>
+</body></html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Velocity Admin | Secure Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#5a4136",
+                        "on-primary": "#561f00",
+                        "surface-variant": "#353534",
+                        "tertiary-container": "#af947c",
+                        "tertiary-fixed-dim": "#dfc1a8",
+                        "on-primary-fixed": "#351000",
+                        "surface-container": "#201f1f",
+                        "secondary-container": "#ea6b1e",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#351000",
+                        "tertiary": "#dfc1a8",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-background": "#e5e2e1",
+                        "primary-container": "#ff6b00",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-secondary": "#562000",
+                        "surface": "#131313",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary-fixed": "#ffdbcc",
+                        "outline": "#a98a7d",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-container": "#572000",
+                        "inverse-on-surface": "#313030",
+                        "background": "#131313",
+                        "on-error": "#690005",
+                        "primary": "#ffb693",
+                        "on-surface-variant": "#e2bfb0",
+                        "secondary": "#ffb693",
+                        "inverse-primary": "#a04100",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-bright": "#3a3939",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#402d1b",
+                        "on-tertiary": "#3f2d1b",
+                        "surface-tint": "#ffb693",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-dim": "#131313",
+                        "on-tertiary-fixed-variant": "#57432f",
+                        "on-surface": "#e5e2e1",
+                        "primary-fixed": "#ffdbcc",
+                        "on-tertiary-fixed": "#281808",
+                        "on-secondary-container": "#4b1b00",
+                        "tertiary-fixed": "#fcddc2",
+                        "surface-container-highest": "#353534",
+                        "secondary-fixed-dim": "#ffb693",
+                        "inverse-surface": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter": "16px",
+                        "safe-area-bottom": "32px",
+                        "touch-target-min": "48px",
+                        "container-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Montserrat"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0A0A0A;
+            color: #e5e2e1;
+            overflow: hidden;
+        }
+        .login-card {
+            background: #1A1A1A;
+            border: 1px solid #2A2A2A;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+        }
+        .primary-btn {
+            background: linear-gradient(180deg, #FF6B00 0%, #D45900 100%);
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .primary-btn:hover {
+            box-shadow: 0px 6px 25px rgba(255, 107, 0, 0.5);
+            transform: translateY(-1px);
+        }
+        .primary-btn:active {
+            transform: scale(0.98);
+        }
+        .input-glow:focus-within {
+            box-shadow: 0 0 0 2px #ff6b00;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen font-body-lg text-body-lg selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Ambient Background Effect -->
+<div class="fixed inset-0 pointer-events-none z-0">
+<div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-secondary-container opacity-[0.03] blur-[120px]"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-primary-container opacity-[0.05] blur-[120px]"></div>
+</div>
+<!-- Main Content -->
+<main class="flex-grow flex items-center justify-center px-container-margin z-10">
+<div class="login-card w-full max-w-[440px] rounded-xl p-10 md:p-12 animate-in fade-in zoom-in duration-700">
+<!-- Logo Section -->
+<div class="flex flex-col items-center mb-10">
+<div class="mb-4">
+<span class="material-symbols-outlined text-[48px] text-primary-container" style="font-variation-settings: 'FILL' 1;">speed</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface tracking-tighter">
+                    VELOCITY<span class="text-primary-container">ADMIN</span>
+</h1>
+<p class="text-on-surface-variant text-body-sm mt-2 opacity-70">Secure Operations Gateway</p>
+</div>
+<!-- Login Form -->
+<form class="space-y-6" onsubmit="return false;">
+<!-- Email Field -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant block ml-1" for="email">ADMINISTRATOR EMAIL</label>
+<div class="relative flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden transition-all duration-200 focus-within:border-primary-container">
+<span class="material-symbols-outlined ml-4 text-on-surface-variant">alternate_email</span>
+<input class="w-full bg-transparent border-none text-on-surface placeholder:text-on-surface-variant/30 py-3.5 px-3 focus:ring-0" id="email" placeholder="name@velocity.com" required="" type="email"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-2">
+<div class="flex justify-between items-center px-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant block" for="password">SECURITY CREDENTIALS</label>
+<a class="text-primary-container font-label-caps text-label-caps hover:underline transition-all" href="#">RECOVER PASSWORD</a>
+</div>
+<div class="relative flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden transition-all duration-200 focus-within:border-primary-container">
+<span class="material-symbols-outlined ml-4 text-on-surface-variant">lock</span>
+<input class="w-full bg-transparent border-none text-on-surface placeholder:text-on-surface-variant/30 py-3.5 px-3 focus:ring-0" id="password" placeholder="••••••••••••" required="" type="password"/>
+<button class="material-symbols-outlined mr-4 text-on-surface-variant hover:text-on-surface transition-colors" type="button">visibility</button>
+</div>
+</div>
+<!-- Remember Me -->
+<div class="flex items-center space-x-3 px-1">
+<div class="relative flex items-center">
+<input class="w-5 h-5 rounded border-outline-variant bg-surface-container text-primary-container focus:ring-primary-container focus:ring-offset-surface-container-low" id="remember" type="checkbox"/>
+</div>
+<label class="text-body-sm text-on-surface-variant cursor-pointer select-none" for="remember">Trust this device for 30 days</label>
+</div>
+<!-- Login Button -->
+<button class="primary-btn w-full h-[52px] rounded-lg text-on-primary font-title-md text-title-md flex items-center justify-center gap-2 group" type="submit">
+                    Login to Console
+                    <span class="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</form>
+<!-- Extra Footer inside Card -->
+<div class="mt-10 pt-8 border-t border-outline-variant/30 text-center">
+<p class="text-body-sm text-on-surface-variant/50">
+                    Velocity Fleet Management System v4.2.0
+                </p>
+</div>
+</div>
+</main>
+<!-- Global System Status Footer -->
+<footer class="h-20 flex flex-col md:flex-row items-center justify-between px-container-margin z-10 text-on-surface-variant/60">
+<div class="flex items-center gap-2 mb-2 md:mb-0">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span>
+</span>
+<span class="font-label-caps text-label-caps">ALL SYSTEMS OPERATIONAL</span>
+</div>
+<div class="flex gap-6 font-label-caps text-label-caps">
+<a class="hover:text-primary-container transition-colors" href="#">PRIVACY POLICY</a>
+<a class="hover:text-primary-container transition-colors" href="#">SECURITY AUDIT</a>
+<a class="hover:text-primary-container transition-colors" href="#">CONTACT SUPPORT</a>
+</div>
+</footer>
+<script>
+        // Simple Interaction logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = passwordInput.nextElementSibling;
+
+            toggleBtn.addEventListener('click', () => {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                toggleBtn.textContent = type === 'password' ? 'visibility' : 'visibility_off';
+            });
+
+            // Focus animation triggers
+            const formInputs = document.querySelectorAll('input');
+            formInputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    input.parentElement.classList.add('shadow-[0_0_15px_rgba(255,107,0,0.1)]');
+                });
+                input.addEventListener('blur', () => {
+                    input.parentElement.classList.remove('shadow-[0_0_15px_rgba(255,107,0,0.1)]');
+                });
+            });
+        });
+    </script>
+</body></html>

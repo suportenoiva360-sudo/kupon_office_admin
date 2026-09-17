@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>System Settings | Velocity Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#5a4136",
+                    "on-primary": "#561f00",
+                    "surface-variant": "#353534",
+                    "tertiary-container": "#af947c",
+                    "tertiary-fixed-dim": "#dfc1a8",
+                    "on-primary-fixed": "#351000",
+                    "surface-container": "#201f1f",
+                    "secondary-container": "#ea6b1e",
+                    "on-secondary-fixed-variant": "#7a3000",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#351000",
+                    "tertiary": "#dfc1a8",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-background": "#e5e2e1",
+                    "primary-container": "#ff6b00",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-secondary": "#562000",
+                    "surface": "#131313",
+                    "surface-container-high": "#2a2a2a",
+                    "secondary-fixed": "#ffdbcc",
+                    "outline": "#a98a7d",
+                    "on-error-container": "#ffdad6",
+                    "on-primary-container": "#572000",
+                    "inverse-on-surface": "#313030",
+                    "background": "#131313",
+                    "on-error": "#690005",
+                    "primary": "#ffb693",
+                    "on-surface-variant": "#e2bfb0",
+                    "secondary": "#ffb693",
+                    "inverse-primary": "#a04100",
+                    "surface-container-low": "#1c1b1b",
+                    "surface-bright": "#3a3939",
+                    "error": "#ffb4ab",
+                    "on-tertiary-container": "#402d1b",
+                    "on-tertiary": "#3f2d1b",
+                    "surface-tint": "#ffb693",
+                    "primary-fixed-dim": "#ffb693",
+                    "surface-dim": "#131313",
+                    "on-tertiary-fixed-variant": "#57432f",
+                    "on-surface": "#e5e2e1",
+                    "primary-fixed": "#ffdbcc",
+                    "on-tertiary-fixed": "#281808",
+                    "on-secondary-container": "#4b1b00",
+                    "tertiary-fixed": "#fcddc2",
+                    "surface-container-highest": "#353534",
+                    "secondary-fixed-dim": "#ffb693",
+                    "inverse-surface": "#e5e2e1"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "gutter": "16px",
+                    "safe-area-bottom": "32px",
+                    "touch-target-min": "48px",
+                    "container-margin": "24px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Montserrat"],
+                    "display-lg": ["Montserrat"],
+                    "headline-lg-mobile": ["Montserrat"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Montserrat"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #0A0A0A;
+            color: #e5e2e1;
+            overflow-x: hidden;
+        }
+        .custom-glass {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid #2A2A2A;
+        }
+        .orange-glow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.3);
+        }
+        .orange-gradient {
+            background: linear-gradient(180deg, #ff6b00 0%, #d45900 100%);
+        }
+        .input-dark {
+            background-color: #050505;
+            border: 1px solid #2A2A2A;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-dark:focus {
+            border-color: #ff6b00;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0A0A0A;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #353534;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff6b00;
+        }
+    </style>
+</head>
+<body class="font-Inter antialiased">
+<!-- Sidebar Navigation -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low shadow-sm flex flex-col py-gutter px-4 z-50">
+<div class="mb-10 px-4">
+<h1 class="font-Montserrat text-2xl font-extrabold text-primary tracking-tighter">Velocity Admin</h1>
+<p class="text-on-surface-variant font-Inter text-xs opacity-70">Operations Hub</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-Inter text-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-Inter text-body-sm">Drivers</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-Inter text-body-sm">Trip Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-Inter text-body-sm">Fares</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-semibold active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-Inter text-body-sm">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-outline-variant">
+<button class="w-full orange-gradient text-white font-bold py-3 px-4 rounded-xl orange-glow flex items-center justify-center gap-2 hover:scale-[1.02] transition-all">
+<span class="material-symbols-outlined text-[20px]">emergency</span>
+<span class="font-Inter text-body-sm">Emergency Dispatch</span>
+</button>
+</div>
+</aside>
+<!-- Top App Bar -->
+<header class="flex justify-between items-center h-16 px-container-margin ml-64 bg-surface border-b border-outline-variant sticky top-0 z-40">
+<div class="flex items-center gap-4 bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-96">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-full text-on-surface" placeholder="Search system settings..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300 relative">
+<span class="material-symbols-outlined text-on-surface">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300">
+<span class="material-symbols-outlined text-on-surface">help</span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-outline-variant">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-bold text-on-surface">Alex Mercer</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">Super Admin</p>
+</div>
+<button class="hover:bg-surface-container-high rounded-full p-1 transition-all duration-300">
+<span class="material-symbols-outlined text-[32px] text-primary">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 p-container-margin min-h-[calc(100vh-64px)] bg-surface-container-lowest">
+<!-- Header & Tabs Section -->
+<section class="mb-8">
+<div class="flex flex-col gap-2 mb-8">
+<h2 class="font-Montserrat text-headline-lg text-on-surface">System Settings</h2>
+<p class="text-on-surface-variant font-Inter text-body-lg">Configure global parameters, pricing models, and integrations.</p>
+</div>
+<!-- Tab Switcher -->
+<div class="flex gap-1 p-1 bg-surface-container-low rounded-2xl border border-outline-variant w-fit">
+<button class="tab-btn px-6 py-3 rounded-xl font-Inter text-body-sm font-semibold transition-all duration-300 bg-secondary-container text-on-secondary-container" id="tab-fare-config" onclick="switchTab('fare-config')">
+                    Fare Configuration
+                </button>
+<button class="tab-btn px-6 py-3 rounded-xl font-Inter text-body-sm font-semibold text-on-surface-variant hover:bg-surface-variant transition-all duration-300" id="tab-operational-zones" onclick="switchTab('operational-zones')">
+                    Operational Zones
+                </button>
+<button class="tab-btn px-6 py-3 rounded-xl font-Inter text-body-sm font-semibold text-on-surface-variant hover:bg-surface-variant transition-all duration-300" id="tab-payment-gateways" onclick="switchTab('payment-gateways')">
+                    Payment Gateways
+                </button>
+<button class="tab-btn px-6 py-3 rounded-xl font-Inter text-body-sm font-semibold text-on-surface-variant hover:bg-surface-variant transition-all duration-300" id="tab-api-integration" onclick="switchTab('api-integration')">
+                    API Integration
+                </button>
+</div>
+</section>
+<!-- Dynamic Content Area -->
+<section class="space-y-8 animate-in fade-in duration-500" id="settings-canvas">
+<!-- Fare Configuration Tab (Active by Default) -->
+<div class="tab-content grid grid-cols-1 lg:grid-cols-3 gap-6" id="content-fare-config">
+<!-- Vehicle Type Card: Standard -->
+<div class="custom-glass p-6 rounded-2xl border-l-4 border-l-secondary-container flex flex-col gap-6 hover:translate-y-[-4px] transition-transform duration-300">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-Montserrat text-title-md text-on-surface">Standard</h3>
+<p class="text-xs text-on-surface-variant mt-1">Everyday affordable rides</p>
+</div>
+<span class="material-symbols-outlined text-primary text-[32px]">directions_car</span>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Base Price ($)</label>
+<input class="input-dark w-full px-4 py-3 rounded-xl text-on-surface font-Inter" step="0.10" type="number" value="3.50"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Price Per KM ($)</label>
+<input class="input-dark w-full px-4 py-3 rounded-xl text-on-surface font-Inter" step="0.05" type="number" value="1.20"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Surge Multiplier (x)</label>
+<div class="flex items-center gap-4">
+<input class="flex-1 accent-primary" max="5" min="1" step="0.1" type="range" value="1.5"/>
+<span class="bg-surface-container-high px-3 py-1 rounded text-primary font-bold">1.5x</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Vehicle Type Card: Comfort -->
+<div class="custom-glass p-6 rounded-2xl border-l-4 border-l-tertiary-container flex flex-col gap-6 hover:translate-y-[-4px] transition-transform duration-300">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-Montserrat text-title-md text-on-surface">Comfort</h3>
+<p class="text-xs text-on-surface-variant mt-1">Top-rated drivers &amp; newer cars</p>
+</div>
+<span class="material-symbols-outlined text-primary text-[32px]">local_taxi</span>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Base Price ($)</label>
+<input class="input-dark w-full px-4 py-3 rounded-xl text-on-surface font-Inter" step="0.10" type="number" value="5.50"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Price Per KM ($)</label>
+<input class="input-dark w-full px-4 py-3 rounded-xl text-on-surface font-Inter" step="0.05" type="number" value="1.85"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Surge Multiplier (x)</label>
+<div class="flex items-center gap-4">
+<input class="flex-1 accent-primary" max="5" min="1" step="0.1" type="range" value="1.8"/>
+<span class="bg-surface-container-high px-3 py-1 rounded text-primary font-bold">1.8x</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Vehicle Type Card: Luxury -->
+<div class="custom-glass p-6 rounded-2xl border-l-4 border-l-primary flex flex-col gap-6 hover:translate-y-[-4px] transition-transform duration-300">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-Montserrat text-title-md text-on-surface">Luxury</h3>
+<p class="text-xs text-on-surface-variant mt-1">Premium high-end vehicles</p>
+</div>
+<span class="material-symbols-outlined text-primary text-[32px]">sports_motorsports</span>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Base Price ($)</label>
+<input class="input-dark w-full px-4 py-3 rounded-xl text-on-surface font-Inter" step="0.10" type="number" value="10.00"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Price Per KM ($)</label>
+<input class="input-dark w-full px-4 py-3 rounded-xl text-on-surface font-Inter" step="0.05" type="number" value="3.50"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Surge Multiplier (x)</label>
+<div class="flex items-center gap-4">
+<input class="flex-1 accent-primary" max="5" min="1" step="0.1" type="range" value="2.5"/>
+<span class="bg-surface-container-high px-3 py-1 rounded text-primary font-bold">2.5x</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Global Pricing Rules (Bento Grid Style) -->
+<div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+<div class="custom-glass p-6 rounded-2xl">
+<div class="flex items-center gap-4 mb-6">
+<div class="bg-primary/10 p-3 rounded-lg">
+<span class="material-symbols-outlined text-primary">schedule</span>
+</div>
+<h4 class="font-Inter font-bold text-body-lg">Automatic Peak Hours</h4>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface rounded-xl border border-outline-variant mb-4">
+<span class="text-body-sm">Morning Rush (07:00 - 09:30)</span>
+<div class="w-12 h-6 bg-secondary-container rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface rounded-xl border border-outline-variant">
+<span class="text-body-sm">Evening Rush (17:00 - 19:30)</span>
+<div class="w-12 h-6 bg-secondary-container rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="custom-glass p-6 rounded-2xl">
+<div class="flex items-center gap-4 mb-6">
+<div class="bg-tertiary/10 p-3 rounded-lg">
+<span class="material-symbols-outlined text-tertiary">celebration</span>
+</div>
+<h4 class="font-Inter font-bold text-body-lg">Holiday Multipliers</h4>
+</div>
+<p class="text-sm text-on-surface-variant mb-6">Apply automated price adjustments during public holidays and major city events.</p>
+<button class="text-primary font-bold flex items-center gap-2 hover:underline transition-all">
+<span class="material-symbols-outlined">add_circle</span>
+<span>Add Holiday Rule</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Other Tab Placeholders (Hidden initially) -->
+<div class="tab-content hidden h-96 flex items-center justify-center custom-glass rounded-2xl overflow-hidden relative" id="content-operational-zones">
+<div class="absolute inset-0 z-0 opacity-40 grayscale contrast-125" data-alt="A high-contrast dark-mode digital map visualization showing glowing orange boundaries of urban zones. The map uses neon lines and minimalist topography to represent a tech-focused logistics interface. The atmosphere is professional and sleek." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAwfJiyE-9vMFe87eeotyYmMin4apwhLcVpwg1Okb3-FnXmr26INeEkLXwOpKxURer1Dr2oE9b5Gkpk7dYyNMJ_sETFrHVQHxrE0RywCdAegS3wnQY9uloMJRbdj3c7QPudipKkgUqgcG8p1fK4pJCmGU_56hjbL33kmI4-LOvYWoKWtVHNoDebUHuiJxVETUPeRBq_7xQmUDYzURvvjaIjnDKxWG8MJy8Z6PUyzif7nKYZ4yv3-HSM')"></div>
+<div class="relative z-10 text-center bg-surface/80 backdrop-blur-md p-8 rounded-2xl border border-outline-variant">
+<span class="material-symbols-outlined text-[48px] text-primary mb-4">map</span>
+<h3 class="font-Montserrat text-title-md mb-2">Zone Mapping Active</h3>
+<p class="text-on-surface-variant">Loading city grid geometry for Velocity Service Areas...</p>
+</div>
+</div>
+<div class="tab-content hidden h-96 flex items-center justify-center custom-glass rounded-2xl" id="content-payment-gateways">
+<div class="text-center p-8">
+<span class="material-symbols-outlined text-[48px] text-tertiary mb-4">account_balance_wallet</span>
+<h3 class="font-Montserrat text-title-md mb-2">Payment Orchestration</h3>
+<p class="text-on-surface-variant">Stripe, PayPal, and Crypto Node connections are active.</p>
+</div>
+</div>
+<div class="tab-content hidden h-96 flex items-center justify-center custom-glass rounded-2xl" id="content-api-integration">
+<div class="text-center p-8">
+<span class="material-symbols-outlined text-[48px] text-secondary-fixed mb-4">terminal</span>
+<h3 class="font-Montserrat text-title-md mb-2">API Webhooks &amp; Keys</h3>
+<p class="text-on-surface-variant">Monitor incoming requests and manage developer credentials.</p>
+</div>
+</div>
+</section>
+<!-- Fixed Footer Actions -->
+<footer class="mt-12 flex justify-end gap-4 pb-safe-area-bottom">
+<button class="px-8 py-3 rounded-xl font-Inter text-body-sm font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors border border-outline-variant">
+                Reset to Defaults
+            </button>
+<button class="px-10 py-3 rounded-xl font-Inter text-body-sm font-bold text-on-primary bg-primary orange-glow hover:scale-[1.05] active:scale-95 transition-all" onclick="handleSave()">
+                Save Changes
+            </button>
+</footer>
+</main>
+<!-- Success Toast (Hidden) -->
+<div class="fixed bottom-8 left-1/2 -translate-x-1/2 custom-glass px-8 py-4 rounded-full border border-primary/50 text-on-surface flex items-center gap-3 opacity-0 translate-y-10 transition-all duration-500 z-[100]" id="save-toast">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-bold">Settings saved successfully</span>
+</div>
+<script>
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Remove active styles from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-secondary-container', 'text-on-secondary-container');
+                btn.classList.add('text-on-surface-variant');
+            });
+
+            // Show active content
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            
+            // Set active button style
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('bg-secondary-container', 'text-on-secondary-container');
+            activeBtn.classList.remove('text-on-surface-variant');
+        }
+
+        function handleSave() {
+            const toast = document.getElementById('save-toast');
+            toast.classList.remove('opacity-0', 'translate-y-10');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-10');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+
+        // Pulse effect for the save button
+        setInterval(() => {
+            const btn = document.querySelector('.orange-glow');
+            btn.style.boxShadow = `0px 4px ${Math.random() * 20 + 15}px rgba(255, 107, 0, 0.5)`;
+        }, 1500);
+    </script>
+</body></html>

@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KupOn Admin — Fluxos de Navegação</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface":            "#131313",
+          "surface-low":        "#1c1b1b",
+          "surface-container":  "#201f1f",
+          "surface-high":       "#2a2a2a",
+          "surface-highest":    "#353534",
+          "on-surface":         "#e5e2e1",
+          "on-surface-variant": "#e2bfb0",
+          "outline-variant":    "#5a4136",
+          "primary":            "#ffb693",
+          "primary-container":  "#ff6b00",
+          "error":              "#cf6679",
+          "success":            "#4caf88",
+          "warning":            "#f5c842",
+          "info":               "#7b8cde",
+          "sos":                "#cf6679",
+        },
+        fontFamily: {
+          headline: ["Montserrat","sans-serif"],
+          body:     ["Inter","sans-serif"],
+        },
+      },
+    },
+  }
+</script>
+<style>
+  /* ── reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    color: #e5e2e1;
+    font-family: Inter, sans-serif;
+    overflow-x: auto;
+  }
+
+  /* ── SVG arrow defs ── */
+  svg.arrows { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+
+  /* ── screen card ── */
+  .screen {
+    position: absolute;
+    width: 168px;
+    border-radius: 14px;
+    border: 1px solid #5a4136;
+    background: #201f1f;
+    padding: 14px 14px 12px;
+    cursor: default;
+    transition: border-color .2s, box-shadow .2s, transform .2s;
+    user-select: none;
+  }
+  .screen:hover {
+    border-color: #ff6b00;
+    box-shadow: 0 0 20px rgba(255,107,0,.18);
+    transform: translateY(-3px);
+  }
+  .screen .icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+    font-size: 18px;
+  }
+  .screen .label {
+    font-family: Montserrat, sans-serif;
+    font-size: 12px; font-weight: 700;
+    line-height: 1.3; color: #e5e2e1;
+    margin-bottom: 4px;
+  }
+  .screen .route {
+    font-size: 10px; color: #a98a7d;
+    font-family: monospace;
+  }
+  .screen .badge {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 9px; font-weight: 700; letter-spacing: .5px;
+    padding: 2px 7px; border-radius: 100px;
+  }
+
+  /* ── group label ── */
+  .group-label {
+    position: absolute;
+    font-family: Montserrat, sans-serif;
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; opacity: .45;
+  }
+
+  /* ── section bg ── */
+  .section-bg {
+    position: absolute;
+    border-radius: 20px;
+    border: 1px dashed;
+  }
+
+  /* ── legend ── */
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .legend-line { width: 28px; height: 2px; display: inline-block; border-radius: 2px; vertical-align: middle; }
+
+  /* ── tooltip ── */
+  .tooltip {
+    position: absolute;
+    background: #131313;
+    border: 1px solid #5a4136;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 11px; color: #e2bfb0;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s;
+    z-index: 100;
+  }
+  .screen:hover .tooltip { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════════════════ -->
+<header class="sticky top-0 z-50 border-b border-[#5a4136]/40 bg-[#0a0a0a]/90 backdrop-blur-md px-8 py-5 flex items-center justify-between">
+  <div class="flex items-center gap-4">
+    <div class="w-9 h-9 rounded-xl bg-[#ff6b00]/15 border border-[#ff6b00]/30 flex items-center justify-center">
+      <span class="material-symbols-outlined text-[#ff6b00] text-[18px]" style="font-variation-settings:'FILL' 1">admin_panel_settings</span>
+    </div>
+    <div>
+      <p class="font-headline text-[15px] font-extrabold tracking-widest text-[#e5e2e1]">KUPON<span class="text-[#ff6b00]"> ADMIN</span></p>
+      <p class="text-[10px] text-[#a98a7d] tracking-wide">Mapa Completo de Navegação</p>
+    </div>
+  </div>
+  <!-- legenda -->
+  <div class="flex flex-wrap gap-x-6 gap-y-2 text-[11px] text-[#e2bfb0]">
+    <span class="flex items-center gap-2"><span class="legend-dot bg-[#ff6b00]"></span>Auth</span>
+    <span class="flex items-center gap-2"><span class="legend-dot bg-[#7b8cde]"></span>Shell / Navegação</span>
+    <span class="flex items-center gap-2"><span class="legend-dot bg-[#4caf88]"></span>Gestão</span>
+    <span class="flex items-center gap-2"><span class="legend-dot bg-[#f5c842]"></span>Operacional</span>
+    <span class="flex items-center gap-2"><span class="legend-dot bg-[#cf6679]"></span>SOS / Urgente</span>
+    <span class="flex items-center gap-2"><span class="legend-dot bg-[#dfc1a8]"></span>Sistema</span>
+    <div class="w-px h-4 bg-[#5a4136]/60 mx-1"></div>
+    <span class="flex items-center gap-2"><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#ff6b00" stroke-width="1.5" stroke-dasharray="0"/></svg> Fluxo principal</span>
+    <span class="flex items-center gap-2"><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#4caf88" stroke-width="1.5" stroke-dasharray="4 3"/></svg> Navegação interna</span>
+    <span class="flex items-center gap-2"><svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#f5c842" stroke-width="1.5" stroke-dasharray="4 3"/></svg> Ação condicional</span>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     CANVAS
+════════════════════════════════════════════════════════════════════════ -->
+<div id="canvas" style="position:relative; width:2600px; height:1900px; margin: 40px auto;">
+
+  <!-- ── DEFS de seta ── -->
+  <svg class="arrows" width="2600" height="1900" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arr-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#ff6b00"/>
+      </marker>
+      <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#4caf88"/>
+      </marker>
+      <marker id="arr-yellow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#f5c842"/>
+      </marker>
+      <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#cf6679"/>
+      </marker>
+      <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#7b8cde"/>
+      </marker>
+      <marker id="arr-tan" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#dfc1a8"/>
+      </marker>
+    </defs>
+
+    <!-- ════════════════════════════════════
+         FLUXO 1: Entrada → Login → Shell
+    ════════════════════════════════════ -->
+    <!-- Splash → AdminLogin -->
+    <path d="M 164,140 L 280,140" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+    <!-- AdminLogin → AdminShell (success) -->
+    <path d="M 464,140 L 580,140" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+    <!-- AdminLogin → erro (loop) -->
+    <path d="M 372,176 C 372,210 372,210 372,176" stroke="#cf6679" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+
+    <!-- ════════════════════════════════════
+         FLUXO 2: Shell → Tabs principais
+    ════════════════════════════════════ -->
+    <!-- Shell → Dashboard -->
+    <path d="M 748,112 L 748,220" stroke="#7b8cde" stroke-width="1.8" fill="none" marker-end="url(#arr-blue)"/>
+    <!-- Shell → Motoristas -->
+    <path d="M 748,168 C 748,200 960,200 960,240" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+    <!-- Shell → Usuários -->
+    <path d="M 748,168 C 748,220 1160,220 1160,240" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+    <!-- Shell → Financeiro -->
+    <path d="M 748,168 C 748,230 1360,230 1360,240" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+    <!-- Shell → Suporte -->
+    <path d="M 748,168 C 748,240 1560,240 1560,240" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+
+    <!-- ════════════════════════════════════
+         FLUXO 3: Dashboard → atalhos
+    ════════════════════════════════════ -->
+    <!-- Dashboard → Detalhe motorista (botão Revisar) -->
+    <path d="M 836,310 C 900,310 900,480 960,480" stroke="#f5c842" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-yellow)"/>
+    <!-- Dashboard → Mapa ao Vivo -->
+    <path d="M 836,310 C 900,310 900,640 960,640" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+    <!-- Dashboard → SOS -->
+    <path d="M 836,310 C 920,310 920,800 1560,800" stroke="#cf6679" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+    <!-- Dashboard → Promoções (atalho) -->
+    <path d="M 836,310 C 900,380 1360,440 1560,440" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+    <!-- Dashboard → Suporte (alertas) -->
+    <path d="M 836,310 C 920,400 1640,340 1648,360" stroke="#cf6679" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+
+    <!-- ════════════════════════════════════
+         FLUXO 4: Motoristas
+    ════════════════════════════════════ -->
+    <!-- Listagem → Detalhe -->
+    <path d="M 960,316 L 960,440" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+    <!-- Detalhe → Aprovar (condicional) -->
+    <path d="M 1128,500 C 1180,500 1180,540 1128,540" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+    <!-- Detalhe → Revogar (condicional) -->
+    <path d="M 1128,520 C 1200,520 1200,560 1128,560" stroke="#cf6679" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+    <!-- Detalhe → Tab Histórico -->
+    <path d="M 960,596 L 960,660" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+
+    <!-- ════════════════════════════════════
+         FLUXO 5: Usuários
+    ════════════════════════════════════ -->
+    <!-- Listagem → Detalhe usuário -->
+    <path d="M 1160,316 L 1160,440" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+    <!-- Detalhe → Banir (condicional) -->
+    <path d="M 1328,480 C 1380,480 1380,520 1328,520" stroke="#cf6679" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+    <!-- Detalhe → Histórico corridas (externo) -->
+    <path d="M 1160,556 L 1160,620" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+
+    <!-- ════════════════════════════════════
+         FLUXO 6: Financeiro
+    ════════════════════════════════════ -->
+    <!-- Listagem → Aprovar saque -->
+    <path d="M 1360,316 L 1360,440" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+    <!-- Aprovar saque → confirmação -->
+    <path d="M 1528,480 C 1580,480 1580,520 1528,520" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+
+    <!-- ════════════════════════════════════
+         FLUXO 7: Suporte
+    ════════════════════════════════════ -->
+    <!-- Fila → Detalhe ticket -->
+    <path d="M 1648,316 L 1648,440" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+    <!-- Detalhe → Responder -->
+    <path d="M 1648,556 L 1648,620" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+    <!-- Detalhe → Fechar ticket -->
+    <path d="M 1816,490 C 1870,490 1870,530 1816,530" stroke="#f5c842" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-yellow)"/>
+
+    <!-- ════════════════════════════════════
+         FLUXO 8: Sidebar extra
+    ════════════════════════════════════ -->
+    <!-- Shell → Promoções (sidebar) -->
+    <path d="M 748,168 C 760,500 1540,500 1540,520" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+    <!-- Promoções → Form criar/editar -->
+    <path d="M 1648,540 L 1648,600" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+
+    <!-- Shell → Planos (sidebar) -->
+    <path d="M 748,168 C 760,700 1740,700 1740,720" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+    <!-- Planos → Form criar/editar -->
+    <path d="M 1848,740 L 1848,800" stroke="#ff6b00" stroke-width="1.8" fill="none" marker-end="url(#arr-orange)"/>
+
+    <!-- Shell → SOS (sidebar) -->
+    <path d="M 748,168 C 760,840 1940,840 1940,860" stroke="#cf6679" stroke-width="1.8" fill="none" marker-end="url(#arr-red)"/>
+    <!-- SOS → Resolver -->
+    <path d="M 2108,900 C 2160,900 2160,940 2108,940" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+
+    <!-- Shell → Configurações (sidebar) -->
+    <path d="M 748,168 C 760,1020 2140,1020 2140,1040" stroke="#7b8cde" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-blue)"/>
+    <!-- Config → Salvar -->
+    <path d="M 2308,1080 C 2360,1080 2360,1120 2308,1120" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+
+    <!-- Shell → Logout -->
+    <path d="M 680,168 C 660,300 580,340 484,340" stroke="#cf6679" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+    <!-- Logout → AdminLogin -->
+    <path d="M 372,340 C 372,300 372,220 372,176" stroke="#cf6679" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+
+    <!-- Mapa ao Vivo (Realtime) -->
+    <path d="M 748,168 C 760,640 960,680 960,680" stroke="#4caf88" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+
+    <!-- Realtime SOS badge no Dashboard -->
+    <path d="M 1940,890 C 1940,840 836,360 836,340" stroke="#cf6679" stroke-width="1.2" fill="none" stroke-dasharray="3 4" opacity=".4" marker-end="url(#arr-red)"/>
+  </svg>
+
+  <!-- ════════════════════════════════════════════════════════
+       SECTION BACKGROUNDS
+  ════════════════════════════════════════════════════════ -->
+  <!-- Auth -->
+  <div class="section-bg" style="left:60px;top:60px;width:580px;height:200px;border-color:#ff6b00;opacity:.12;background:rgba(255,107,0,.03);"></div>
+  <!-- Shell -->
+  <div class="section-bg" style="left:560px;top:60px;width:260px;height:200px;border-color:#7b8cde;opacity:.15;background:rgba(123,140,222,.03);"></div>
+  <!-- Operacional (row 2) -->
+  <div class="section-bg" style="left:660px;top:220px;width:1300px;height:160px;border-color:#4caf88;opacity:.1;background:rgba(76,175,136,.02);"></div>
+  <!-- Mapa / Geo -->
+  <div class="section-bg" style="left:860px;top:600px;width:280px;height:200px;border-color:#4caf88;opacity:.12;background:rgba(76,175,136,.03);"></div>
+  <!-- SOS -->
+  <div class="section-bg" style="left:1840px;top:820px;width:360px;height:200px;border-color:#cf6679;opacity:.15;background:rgba(207,102,121,.04);"></div>
+
+  <!-- ════════════════════════════════════════════════════════
+       GROUP LABELS
+  ════════════════════════════════════════════════════════ -->
+  <p class="group-label" style="left:80px;top:68px;color:#ff6b00">● AUTENTICAÇÃO</p>
+  <p class="group-label" style="left:580px;top:68px;color:#7b8cde">● SHELL</p>
+  <p class="group-label" style="left:680px;top:226px;color:#4caf88">● TABS PRINCIPAIS</p>
+  <p class="group-label" style="left:880px;top:420px;color:#f5c842">● GESTÃO DE MOTORISTAS</p>
+  <p class="group-label" style="left:1080px;top:420px;color:#4caf88">● GESTÃO DE USUÁRIOS</p>
+  <p class="group-label" style="left:1280px;top:420px;color:#dfc1a8">● FINANCEIRO</p>
+  <p class="group-label" style="left:1500px;top:420px;color:#7b8cde">● SUPORTE</p>
+  <p class="group-label" style="left:1500px;top:500px;color:#4caf88">● PROMOÇÕES</p>
+  <p class="group-label" style="left:1700px;top:700px;color:#dfc1a8">● PLANOS</p>
+  <p class="group-label" style="left:1860px;top:828px;color:#cf6679">● SOS / EMERGÊNCIA</p>
+  <p class="group-label" style="left:2060px;top:1020px;color:#a98a7d">● CONFIGURAÇÕES</p>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── FILA 1: AUTH ──────────────────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Splash -->
+  <div class="screen" style="left:80px;top:100px;">
+    <div class="icon bg-[#ff6b00]/10" style="color:#ff6b00"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">launch</span></div>
+    <p class="label">Splash Screen</p>
+    <p class="route">/</p>
+    <span class="badge bg-[#ff6b00]/10 text-[#ff6b00]">ENTRY POINT</span>
+  </div>
+
+  <!-- Admin Login -->
+  <div class="screen" style="left:280px;top:100px;">
+    <div class="icon bg-[#ff6b00]/10" style="color:#ff6b00"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">lock</span></div>
+    <p class="label">Login Admin</p>
+    <p class="route">/admin-login</p>
+    <span class="badge bg-[#ff6b00]/10 text-[#ff6b00]">ROLE: admin</span>
+    <div class="tooltip" style="top:-44px;left:0">Valida role='admin' na tabela users</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── FILA 1: SHELL ─────────────────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Admin Shell -->
+  <div class="screen" style="left:580px;top:100px;border-color:#7b8cde;background:linear-gradient(135deg,#201f1f,#1c2040);">
+    <div class="icon bg-[#7b8cde]/10" style="color:#7b8cde"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">grid_view</span></div>
+    <p class="label">Admin Shell</p>
+    <p class="route">/admin-shell</p>
+    <span class="badge bg-[#7b8cde]/15 text-[#7b8cde]">NAVIGATION RAIL</span>
+    <div class="tooltip" style="top:-56px;left:0">NavigationRail (tablet) /<br>BottomNav (mobile)</div>
+  </div>
+
+  <!-- Logout confirmação -->
+  <div class="screen" style="left:280px;top:280px;border-color:#cf6679;background:rgba(207,102,121,.05);">
+    <div class="icon bg-[#cf6679]/10" style="color:#cf6679"><span class="material-symbols-outlined" style="font-size:18px">logout</span></div>
+    <p class="label">Confirmar Logout</p>
+    <p class="route">Dialog</p>
+    <span class="badge bg-[#cf6679]/10 text-[#cf6679]">MODAL</span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── FILA 2: TABS PRINCIPAIS ───────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Dashboard -->
+  <div class="screen" style="left:680px;top:240px;border-color:#ff6b00;">
+    <div class="icon bg-[#ff6b00]/10" style="color:#ff6b00"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">dashboard</span></div>
+    <p class="label">Dashboard</p>
+    <p class="route">tab index 0</p>
+    <span class="badge bg-[#ff6b00]/10 text-[#ff6b00]">KPIs + ALERTAS</span>
+    <div class="tooltip" style="top:-56px;left:0">6 KPIs · corridas recentes<br>aprovações pendentes · atalhos</div>
+  </div>
+
+  <!-- Motoristas (tab) -->
+  <div class="screen" style="left:880px;top:240px;">
+    <div class="icon bg-[#f5c842]/10" style="color:#f5c842"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">directions_car</span></div>
+    <p class="label">Motoristas</p>
+    <p class="route">tab index 1</p>
+    <span class="badge bg-[#f5c842]/10 text-[#f5c842]">TABS: todos/pend/online</span>
+  </div>
+
+  <!-- Usuários (tab) -->
+  <div class="screen" style="left:1080px;top:240px;">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">group</span></div>
+    <p class="label">Usuários</p>
+    <p class="route">tab index 2</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">BUSCA POR NOME</span>
+  </div>
+
+  <!-- Financeiro (tab) -->
+  <div class="screen" style="left:1280px;top:240px;">
+    <div class="icon bg-[#dfc1a8]/10" style="color:#dfc1a8"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">account_balance_wallet</span></div>
+    <p class="label">Financeiro</p>
+    <p class="route">tab index 3</p>
+    <span class="badge bg-[#dfc1a8]/10 text-[#dfc1a8]">TABS: todas/saques/corridas</span>
+  </div>
+
+  <!-- Suporte (tab) -->
+  <div class="screen" style="left:1480px;top:240px;">
+    <div class="icon bg-[#7b8cde]/10" style="color:#7b8cde"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">support_agent</span></div>
+    <p class="label">Suporte</p>
+    <p class="route">tab index 4</p>
+    <span class="badge bg-[#7b8cde]/10 text-[#7b8cde]">TABS: todos/abertos/fechados</span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── FILA 3: DETALHE MOTORISTA ─────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Detalhe motorista -->
+  <div class="screen" style="left:880px;top:440px;border-color:#f5c842;">
+    <div class="icon bg-[#f5c842]/10" style="color:#f5c842"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">person_pin</span></div>
+    <p class="label">Detalhe Motorista</p>
+    <p class="route">/admin-detalhe-motorista</p>
+    <span class="badge bg-[#f5c842]/10 text-[#f5c842]">args: driverId</span>
+    <div class="tooltip" style="top:-56px;left:0">ProfileCoverHeader · stats<br>tab Informações / Histórico</div>
+  </div>
+
+  <!-- Ação: Aprovar -->
+  <div class="screen" style="left:1120px;top:480px;width:148px;border-color:#4caf88;background:rgba(76,175,136,.05);">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-size:18px">verified</span></div>
+    <p class="label">Aprovar Motorista</p>
+    <p class="route">UPDATE drivers</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">is_approved=true</span>
+  </div>
+
+  <!-- Ação: Revogar -->
+  <div class="screen" style="left:1120px;top:580px;width:148px;border-color:#cf6679;background:rgba(207,102,121,.05);">
+    <div class="icon bg-[#cf6679]/10" style="color:#cf6679"><span class="material-symbols-outlined" style="font-size:18px">cancel</span></div>
+    <p class="label">Revogar Aprovação</p>
+    <p class="route">UPDATE drivers</p>
+    <span class="badge bg-[#cf6679]/10 text-[#cf6679]">is_approved=false</span>
+  </div>
+
+  <!-- Histórico viagens driver -->
+  <div class="screen" style="left:880px;top:640px;">
+    <div class="icon bg-[#7b8cde]/10" style="color:#7b8cde"><span class="material-symbols-outlined" style="font-size:18px">history</span></div>
+    <p class="label">Histórico Viagens</p>
+    <p class="route">tab Histórico</p>
+    <span class="badge bg-[#7b8cde]/10 text-[#7b8cde]">lista trips</span>
+  </div>
+
+  <!-- Mapa ao vivo -->
+  <div class="screen" style="left:880px;top:820px;border-color:#4caf88;background:rgba(76,175,136,.04);">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">map</span></div>
+    <p class="label">Mapa ao Vivo</p>
+    <p class="route">/admin-mapa</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">REALTIME GPS</span>
+    <div class="tooltip" style="top:-44px;left:0">Motoristas online em tempo real</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── FILA 3: DETALHE USUÁRIO ───────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Detalhe usuário (inline no AdminUsersPage) -->
+  <div class="screen" style="left:1080px;top:440px;">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">account_circle</span></div>
+    <p class="label">Detalhe Usuário</p>
+    <p class="route">selectedUser state</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">INLINE</span>
+    <div class="tooltip" style="top:-44px;left:0">Sem rota separada<br>State interno da página</div>
+  </div>
+
+  <!-- Banir usuário -->
+  <div class="screen" style="left:1320px;top:440px;width:148px;border-color:#cf6679;background:rgba(207,102,121,.05);">
+    <div class="icon bg-[#cf6679]/10" style="color:#cf6679"><span class="material-symbols-outlined" style="font-size:18px">block</span></div>
+    <p class="label">Banir Usuário</p>
+    <p class="route">Dialog confirm</p>
+    <span class="badge bg-[#cf6679]/10 text-[#cf6679]">MODAL</span>
+  </div>
+
+  <!-- Histórico corridas usuário -->
+  <div class="screen" style="left:1080px;top:600px;">
+    <div class="icon bg-[#7b8cde]/10" style="color:#7b8cde"><span class="material-symbols-outlined" style="font-size:18px">receipt_long</span></div>
+    <p class="label">Histórico Corridas</p>
+    <p class="route">futuro: /admin-trips</p>
+    <span class="badge bg-[#7b8cde]/10 text-[#7b8cde]">PLACEHOLDER</span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── FILA 3: FINANCEIRO DETALHE ────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Transação detalhe + aprovar saque -->
+  <div class="screen" style="left:1280px;top:440px;">
+    <div class="icon bg-[#dfc1a8]/10" style="color:#dfc1a8"><span class="material-symbols-outlined" style="font-size:18px">payments</span></div>
+    <p class="label">Aprovação de Saque</p>
+    <p class="route">UPDATE credit_transactions</p>
+    <span class="badge bg-[#dfc1a8]/10 text-[#dfc1a8]">status=completed</span>
+  </div>
+
+  <!-- Confirmação inline -->
+  <div class="screen" style="left:1480px;top:480px;width:148px;border-color:#4caf88;background:rgba(76,175,136,.05);">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-size:18px">check_circle</span></div>
+    <p class="label">Saque Aprovado</p>
+    <p class="route">SnackBar feedback</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">FEEDBACK</span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── FILA 3+4: SUPORTE ─────────────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Detalhe ticket -->
+  <div class="screen" style="left:1480px;top:440px;">
+    <div class="icon bg-[#7b8cde]/10" style="color:#7b8cde"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">mark_email_read</span></div>
+    <p class="label">Detalhe Ticket</p>
+    <p class="route">selectedTicket state</p>
+    <span class="badge bg-[#7b8cde]/10 text-[#7b8cde]">INLINE</span>
+  </div>
+
+  <!-- Responder ticket -->
+  <div class="screen" style="left:1480px;top:600px;border-color:#4caf88;background:rgba(76,175,136,.04);">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-size:18px">reply</span></div>
+    <p class="label">Enviar Resposta</p>
+    <p class="route">INSERT support_replies</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">is_admin=true</span>
+  </div>
+
+  <!-- Fechar ticket -->
+  <div class="screen" style="left:1720px;top:460px;width:148px;border-color:#f5c842;background:rgba(245,200,66,.04);">
+    <div class="icon bg-[#f5c842]/10" style="color:#f5c842"><span class="material-symbols-outlined" style="font-size:18px">task_alt</span></div>
+    <p class="label">Fechar Ticket</p>
+    <p class="route">UPDATE status=closed</p>
+    <span class="badge bg-[#f5c842]/10 text-[#f5c842]">CONDICIONAL</span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── PROMOÇÕES ─────────────────────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Listagem promoções -->
+  <div class="screen" style="left:1480px;top:540px;border-color:#4caf88;">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">local_offer</span></div>
+    <p class="label">Promoções</p>
+    <p class="route">/admin-promocoes</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">LISTA + AÇÕES</span>
+  </div>
+
+  <!-- Form sheet promoção -->
+  <div class="screen" style="left:1480px;top:660px;border-color:#4caf88;">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-size:18px">add_circle</span></div>
+    <p class="label">Form Cupom</p>
+    <p class="route">BottomSheet</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">CRIAR / EDITAR</span>
+    <div class="tooltip" style="top:-44px;left:0">código · tipo · valor<br>max_uses · min_fare</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── PLANOS ────────────────────────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Listagem planos -->
+  <div class="screen" style="left:1680px;top:740px;border-color:#dfc1a8;">
+    <div class="icon bg-[#dfc1a8]/10" style="color:#dfc1a8"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">card_membership</span></div>
+    <p class="label">Planos de Assinatura</p>
+    <p class="route">/admin-planos</p>
+    <span class="badge bg-[#dfc1a8]/10 text-[#dfc1a8]">LISTA + AÇÕES</span>
+  </div>
+
+  <!-- Form sheet plano -->
+  <div class="screen" style="left:1680px;top:860px;border-color:#dfc1a8;">
+    <div class="icon bg-[#dfc1a8]/10" style="color:#dfc1a8"><span class="material-symbols-outlined" style="font-size:18px">add_circle</span></div>
+    <p class="label">Form Plano</p>
+    <p class="route">BottomSheet</p>
+    <span class="badge bg-[#dfc1a8]/10 text-[#dfc1a8]">CRIAR / EDITAR</span>
+    <div class="tooltip" style="top:-44px;left:0">nome · preço · créditos<br>período · descrição</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── SOS ───────────────────────────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Listagem SOS -->
+  <div class="screen" style="left:1880px;top:860px;border-color:#cf6679;background:rgba(207,102,121,.05);">
+    <div class="icon bg-[#cf6679]/10" style="color:#cf6679"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">sos</span></div>
+    <p class="label">Alertas SOS</p>
+    <p class="route">/admin-sos</p>
+    <span class="badge bg-[#cf6679]/10 text-[#cf6679]">REALTIME</span>
+    <div class="tooltip" style="top:-44px;left:0">Supabase Realtime Channel<br>INSERT em sos_alerts</div>
+  </div>
+
+  <!-- Resolver SOS -->
+  <div class="screen" style="left:2080px;top:900px;width:148px;border-color:#4caf88;background:rgba(76,175,136,.05);">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-size:18px">check_circle</span></div>
+    <p class="label">Resolver Alerta</p>
+    <p class="route">UPDATE status=resolved</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">AÇÃO</span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ── CONFIGURAÇÕES ─────────────────────────────────
+  ════════════════════════════════════════════════════════ -->
+
+  <!-- Configurações -->
+  <div class="screen" style="left:2080px;top:1060px;border-color:#a98a7d;">
+    <div class="icon bg-[#a98a7d]/10" style="color:#a98a7d"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:18px">settings</span></div>
+    <p class="label">Configurações Sistema</p>
+    <p class="route">/admin-configuracoes</p>
+    <span class="badge bg-[#a98a7d]/10 text-[#a98a7d]">TARIFAS + COMISSÃO</span>
+    <div class="tooltip" style="top:-56px;left:0">4 categorias de veículo<br>comissão · pico · noturno</div>
+  </div>
+
+  <!-- Salvar config -->
+  <div class="screen" style="left:2080px;top:1180px;width:148px;border-color:#4caf88;background:rgba(76,175,136,.05);">
+    <div class="icon bg-[#4caf88]/10" style="color:#4caf88"><span class="material-symbols-outlined" style="font-size:18px">save</span></div>
+    <p class="label">Salvar Configurações</p>
+    <p class="route">UPSERT system_settings</p>
+    <span class="badge bg-[#4caf88]/10 text-[#4caf88]">SnackBar</span>
+  </div>
+
+</div><!-- /canvas -->
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TABELA DE ROTAS
+════════════════════════════════════════════════════════════════════════ -->
+<section class="max-w-6xl mx-auto px-8 pb-24 mt-[-40px]">
+  <h2 class="font-headline text-xl font-extrabold text-[#e5e2e1] mb-6 tracking-tight">
+    Tabela de Rotas — Painel Admin
+  </h2>
+  <div class="overflow-x-auto rounded-2xl border border-[#5a4136]/40">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-[#201f1f] border-b border-[#5a4136]/40">
+          <th class="text-left px-5 py-3 font-headline text-[11px] tracking-widest text-[#a98a7d] uppercase">Rota Flutter</th>
+          <th class="text-left px-5 py-3 font-headline text-[11px] tracking-widest text-[#a98a7d] uppercase">Página</th>
+          <th class="text-left px-5 py-3 font-headline text-[11px] tracking-widest text-[#a98a7d] uppercase">Tabelas Supabase</th>
+          <th class="text-left px-5 py-3 font-headline text-[11px] tracking-widest text-[#a98a7d] uppercase">Acesso via</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-[#5a4136]/20">
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#ff6b00] text-xs">/admin-login</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminLoginPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">users (role)</td>
+          <td class="px-5 py-3"><span class="badge bg-[#ff6b00]/10 text-[#ff6b00] text-[10px] font-bold px-2 py-0.5 rounded-full">Direto</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#7b8cde] text-xs">/admin-shell</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminShell</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">—</td>
+          <td class="px-5 py-3"><span class="text-[#7b8cde] text-xs">Após login</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#ff6b00] text-xs">tab 0 (Dashboard)</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminDashboardPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">trips · drivers · users · support_tickets · credit_transactions</td>
+          <td class="px-5 py-3"><span class="text-[#7b8cde] text-xs">Shell tab</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#f5c842] text-xs">tab 1 (Motoristas)</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminDriversPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">drivers · users</td>
+          <td class="px-5 py-3"><span class="text-[#7b8cde] text-xs">Shell tab</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#f5c842] text-xs">/admin-detalhe-motorista</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminDriverDetailPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">drivers · users · trips</td>
+          <td class="px-5 py-3"><span class="text-[#f5c842] text-xs">args: driverId</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#4caf88] text-xs">tab 2 (Usuários)</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminUsersPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">users</td>
+          <td class="px-5 py-3"><span class="text-[#7b8cde] text-xs">Shell tab</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#dfc1a8] text-xs">tab 3 (Financeiro)</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminFinanceiroPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">credit_transactions · users</td>
+          <td class="px-5 py-3"><span class="text-[#7b8cde] text-xs">Shell tab</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#7b8cde] text-xs">tab 4 (Suporte)</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminSuportePage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">support_tickets · support_replies · users</td>
+          <td class="px-5 py-3"><span class="text-[#7b8cde] text-xs">Shell tab</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#4caf88] text-xs">/admin-promocoes</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminPromocoesPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">promotions</td>
+          <td class="px-5 py-3"><span class="text-[#a98a7d] text-xs">Sidebar</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#dfc1a8] text-xs">/admin-planos</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminPlanosPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">subscription_plans</td>
+          <td class="px-5 py-3"><span class="text-[#a98a7d] text-xs">Sidebar</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#cf6679] text-xs">/admin-sos</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminSosPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">sos_alerts · drivers · users</td>
+          <td class="px-5 py-3"><span class="text-[#cf6679] text-xs">Sidebar · Realtime</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#ff6b00] text-xs">/admin-mapa</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">— (a implementar)</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">drivers (lat/lng) · trips</td>
+          <td class="px-5 py-3"><span class="text-[#a98a7d] text-xs">Sidebar · Dashboard</span></td>
+        </tr>
+        <tr class="bg-[#1c1b1b] hover:bg-[#201f1f] transition-colors">
+          <td class="px-5 py-3 font-mono text-[#a98a7d] text-xs">/admin-configuracoes</td>
+          <td class="px-5 py-3 text-[#e5e2e1]">AdminConfiguracoesPage</td>
+          <td class="px-5 py-3 text-[#a98a7d] text-xs font-mono">system_settings</td>
+          <td class="px-5 py-3"><span class="text-[#a98a7d] text-xs">Sidebar</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>

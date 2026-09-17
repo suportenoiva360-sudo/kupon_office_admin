@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Velocity | Real-time Live Monitoring</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#5a4136",
+                    "on-primary": "#561f00",
+                    "surface-variant": "#353534",
+                    "tertiary-container": "#af947c",
+                    "tertiary-fixed-dim": "#dfc1a8",
+                    "on-primary-fixed": "#351000",
+                    "surface-container": "#201f1f",
+                    "secondary-container": "#ea6b1e",
+                    "on-secondary-fixed-variant": "#7a3000",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#351000",
+                    "tertiary": "#dfc1a8",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-background": "#e5e2e1",
+                    "primary-container": "#ff6b00",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-secondary": "#562000",
+                    "surface": "#131313",
+                    "surface-container-high": "#2a2a2a",
+                    "secondary-fixed": "#ffdbcc",
+                    "outline": "#a98a7d",
+                    "on-error-container": "#ffdad6",
+                    "on-primary-container": "#572000",
+                    "inverse-on-surface": "#313030",
+                    "background": "#131313",
+                    "on-error": "#690005",
+                    "primary": "#ffb693",
+                    "on-surface-variant": "#e2bfb0",
+                    "secondary": "#ffb693",
+                    "inverse-primary": "#a04100",
+                    "surface-container-low": "#1c1b1b",
+                    "surface-bright": "#3a3939",
+                    "error": "#ffb4ab",
+                    "on-tertiary-container": "#402d1b",
+                    "on-tertiary": "#3f2d1b",
+                    "surface-tint": "#ffb693",
+                    "primary-fixed-dim": "#ffb693",
+                    "surface-dim": "#131313",
+                    "on-tertiary-fixed-variant": "#57432f",
+                    "on-surface": "#e5e2e1",
+                    "primary-fixed": "#ffdbcc",
+                    "on-tertiary-fixed": "#281808",
+                    "on-secondary-container": "#4b1b00",
+                    "tertiary-fixed": "#fcddc2",
+                    "surface-container-highest": "#353534",
+                    "secondary-fixed-dim": "#ffb693",
+                    "inverse-surface": "#e5e2e1"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "8px",
+                    "gutter": "16px",
+                    "safe-area-bottom": "32px",
+                    "touch-target-min": "48px",
+                    "container-margin": "24px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Montserrat"],
+                    "display-lg": ["Montserrat"],
+                    "headline-lg-mobile": ["Montserrat"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Montserrat"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .map-pulse {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.3; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #353534; border-radius: 10px; }
+        .glass-panel {
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 107, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-Inter overflow-hidden h-screen w-screen flex">
+<!-- SideNavBar (Shared Component) -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low shadow-sm flex flex-col py-gutter px-4 z-50">
+<div class="mb-10">
+<h1 class="font-Montserrat text-2xl font-extrabold text-primary-container tracking-tighter">Velocity Admin</h1>
+<p class="text-body-sm text-on-surface-variant">Operations Hub</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-sm text-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body-sm text-body-sm">Drivers</span>
+</a>
+<!-- Active State -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-semibold active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-body-sm text-body-sm">Trip Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-body-sm text-body-sm">Fares</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+</nav>
+<div class="mt-auto">
+<button class="w-full bg-error-container text-white py-3 rounded-lg flex items-center justify-center gap-2 font-bold hover:brightness-110 transition-all">
+<span class="material-symbols-outlined">emergency</span>
+                Emergency Dispatch
+            </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-64 flex flex-col h-screen relative">
+<!-- TopAppBar (Shared Component) -->
+<header class="flex justify-between items-center h-16 px-container-margin sticky top-0 z-40 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-full pl-10 pr-4 py-2 text-body-sm focus:ring-2 focus:ring-primary-container transition-all" placeholder="Search driver, trip ID, or location..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300">
+<span class="material-symbols-outlined text-on-surface-variant">help</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-primary-container">
+<img class="h-full w-full object-cover" data-alt="A professional portrait of a senior logistics administrator for a high-end tech-enabled transport company. The setting is a dimly lit, futuristic command center with ambient orange lighting reflecting off a sleek, dark glass workstation. The individual wears a sharp, minimalist tech-wear jacket, and their expression is focused and capable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCja7QtfW2yAlvTjOEwvlX48Nzu53JMnaPCx2Pl7iMULcySrX29S8uyAguydIReuUybIcg8EgTj2tmlz0d9GBUcz_KVYFevNoaLiPz1vPhllGZTsVvk553a5EuQfbUOqI-FLZ5TbSJN7FNxVF2_d0hiyJft24PeK1DfXKmyFV_dhybipeVQVEPRZExhEPw80E2b7oUCk6WIaGKciT95k8kbLyR8BaN5aSUxSHn_QMt_thE5Y_r4pSOL"/>
+</div>
+</div>
+</header>
+<!-- Live Map Background -->
+<section class="absolute inset-0 z-0 bg-surface-container-lowest overflow-hidden">
+<!-- Simulated Dark Map -->
+<div class="w-full h-full relative" data-location="San Francisco" style="">
+<div class="absolute inset-0 grayscale contrast-125 opacity-30 pointer-events-none" data-alt="A detailed aerial satellite map view of a major metropolitan downtown area at night, specifically focusing on complex street grids and highway intersections. The lighting is nocturnal with glowing city veins and high-contrast shadows. The overall aesthetic is dark, sophisticated, and technological, fitting a premium ride-sharing dispatch system." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDygqpb-zyytUWqlVCqey2a2geMj7HUVHmES_hbMkoF5wDLsyEMwx-VQsHW83jV9KLxmECm3QLeizawCh1D9QhJ913UHq8hXZWKHFtVH1bmIHUOrOtsrI9vIcm0vqQCF1g9VBLDQsjFMrOKxTppSh9-qV3NDskUjenh4baiWLP07d18gsQAeyrb4hygqM_RXNqZ-yWxZjQhg-AbCyXNXsmy2SLRhciZ-WnS1vnxlF0PRKQ-RPQZSALv')"></div>
+<!-- Animated Map Elements (Drivers/Trips) -->
+<!-- Trip Paths -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none">
+<path class="opacity-60" d="M 400 300 Q 600 200 800 500" fill="none" stroke="#ff6b00" stroke-dasharray="8,4" stroke-width="2"></path>
+<path class="opacity-40" d="M 150 600 Q 350 400 500 750" fill="none" stroke="#ffb693" stroke-dasharray="10,5" stroke-width="3"></path>
+<path class="opacity-70" d="M 900 200 L 1100 450" fill="none" stroke="#ff6b00" stroke-dasharray="4,4" stroke-width="2"></path>
+</svg>
+<!-- Active Driver Icons -->
+<div class="absolute top-1/3 left-1/4 group cursor-pointer">
+<div class="absolute -inset-2 bg-primary-container rounded-full map-pulse"></div>
+<div class="relative bg-primary-container text-on-primary-container p-2 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">directions_car</span>
+</div>
+<div class="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block w-48 z-50">
+<div class="glass-panel p-3 rounded-xl shadow-2xl border border-outline-variant">
+<p class="font-bold text-primary-container text-body-sm">ID: VEL-9082</p>
+<p class="text-[10px] text-on-surface-variant">Driver: Marcus Chen</p>
+<p class="text-[10px] text-on-surface-variant">Status: Heading to Pickup</p>
+</div>
+</div>
+</div>
+<div class="absolute top-1/2 right-1/3 group cursor-pointer">
+<div class="relative bg-primary text-on-primary p-2 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">directions_car</span>
+</div>
+</div>
+<div class="absolute bottom-1/4 left-1/2 group cursor-pointer">
+<div class="absolute -inset-2 bg-primary-container rounded-full map-pulse"></div>
+<div class="relative bg-primary-container text-on-primary-container p-2 rounded-full shadow-lg transform group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">electric_car</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Map Controls (Floating) -->
+<div class="absolute bottom-10 right-container-margin z-30 flex flex-col gap-2">
+<button class="h-12 w-12 glass-panel rounded-full flex items-center justify-center hover:bg-surface-container-high transition-all text-on-surface">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="h-12 w-12 glass-panel rounded-full flex items-center justify-center hover:bg-surface-container-high transition-all text-on-surface">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<button class="h-12 w-12 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all mt-4">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">my_location</span>
+</button>
+</div>
+<!-- Monitoring Sidebar Panel -->
+<section class="absolute top-gutter bottom-gutter right-container-margin w-80 z-20 pointer-events-none">
+<div class="h-full flex flex-col gap-gutter pointer-events-auto">
+<!-- Live Stats Card -->
+<div class="glass-panel p-5 rounded-2xl border-l-4 border-l-primary-container shadow-xl">
+<h3 class="font-Montserrat text-label-caps text-primary-container mb-3">FLEET OVERVIEW</h3>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<p class="text-2xl font-bold font-Montserrat">142</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Active Drivers</p>
+</div>
+<div>
+<p class="text-2xl font-bold font-Montserrat text-secondary-container">86</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Live Trips</p>
+</div>
+</div>
+</div>
+<!-- Active Incidents / High Value List -->
+<div class="flex-1 glass-panel rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+<div class="p-5 border-b border-outline-variant bg-surface-container-high/50 flex justify-between items-center">
+<h3 class="font-Montserrat font-bold text-body-lg">Priority Monitoring</h3>
+<span class="bg-error-container text-white text-[10px] px-2 py-0.5 rounded-full font-bold">4 ALERT</span>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+<!-- Incident Item -->
+<div class="bg-surface-container-lowest/50 p-4 rounded-xl border border-error-container/30 hover:border-error transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="text-[10px] text-on-surface-variant font-medium">3 mins ago</span>
+</div>
+<h4 class="font-bold text-body-sm mb-1 group-hover:text-error transition-colors">Unexpected Route Change</h4>
+<p class="text-body-sm text-on-surface-variant line-clamp-1">Trip ID: #VT-9912 • Driver: Julia R.</p>
+<div class="mt-3 flex gap-2">
+<button class="flex-1 py-1.5 rounded-lg bg-surface-container-high text-[11px] font-bold hover:bg-surface-variant transition-colors">DISMISS</button>
+<button class="flex-1 py-1.5 rounded-lg bg-error-container text-white text-[11px] font-bold hover:brightness-110 transition-all">INTERVENE</button>
+</div>
+</div>
+<!-- High Value Trip Item -->
+<div class="bg-surface-container-lowest/50 p-4 rounded-xl border border-secondary-container/30 hover:border-secondary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-secondary-container" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="text-[10px] text-on-surface-variant font-medium">VIP TRIP</span>
+</div>
+<h4 class="font-bold text-body-sm mb-1 group-hover:text-secondary-container transition-colors">Velocity Black - Premium</h4>
+<p class="text-body-sm text-on-surface-variant">Route: SFO Terminal 2 → Ritz Carlton</p>
+<div class="mt-2 h-1 w-full bg-outline-variant rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container w-[75%] shadow-[0_0_8px_#ea6b1e]"></div>
+</div>
+<p class="text-[10px] mt-2 text-right text-secondary-container font-medium">75% Complete</p>
+</div>
+<!-- Regular Item -->
+<div class="bg-surface-container-lowest/50 p-4 rounded-xl border border-transparent hover:border-outline-variant transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-on-surface-variant">timer</span>
+<span class="text-[10px] text-on-surface-variant font-medium">ETA 12 MIN</span>
+</div>
+<h4 class="font-bold text-body-sm mb-1">Standard Delivery #SD-44</h4>
+<p class="text-body-sm text-on-surface-variant">Driver: Sam W. • In Transit</p>
+</div>
+<!-- Incident Item -->
+<div class="bg-surface-container-lowest/50 p-4 rounded-xl border border-error-container/30">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">car_crash</span>
+<span class="text-[10px] text-on-surface-variant font-medium">12 mins ago</span>
+</div>
+<h4 class="font-bold text-body-sm mb-1">Impact Detected (Low G)</h4>
+<p class="text-body-sm text-on-surface-variant">Vehicle #882 • Checking status...</p>
+</div>
+</div>
+<!-- Footer Action -->
+<div class="p-4 bg-surface-container-high/30">
+<button class="w-full py-3 rounded-xl border border-outline-variant font-bold text-body-sm hover:bg-surface-container-high transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-body-lg">download</span>
+                            Export Shift Logs
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Map UI Overlay interactions -->
+<script>
+        // Simple map interactivity placeholder
+        document.querySelectorAll('.group').forEach(driver => {
+            driver.addEventListener('click', () => {
+                console.log('Driver clicked, centering view...');
+                // Visual feedback
+                driver.classList.add('ring-2', 'ring-primary-container', 'ring-offset-2', 'ring-offset-surface');
+                setTimeout(() => driver.classList.remove('ring-2', 'ring-primary-container', 'ring-offset-2', 'ring-offset-surface'), 2000);
+            });
+        });
+
+        // Search Bar Focus Effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-105');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-105');
+        });
+    </script>
+</body></html>

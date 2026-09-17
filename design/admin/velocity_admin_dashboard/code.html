@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Velocity Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Montserrat:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#5a4136",
+                        "on-primary": "#561f00",
+                        "surface-variant": "#353534",
+                        "tertiary-container": "#af947c",
+                        "tertiary-fixed-dim": "#dfc1a8",
+                        "on-primary-fixed": "#351000",
+                        "surface-container": "#201f1f",
+                        "secondary-container": "#ea6b1e",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#351000",
+                        "tertiary": "#dfc1a8",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-background": "#e5e2e1",
+                        "primary-container": "#ff6b00",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-secondary": "#562000",
+                        "surface": "#131313",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary-fixed": "#ffdbcc",
+                        "outline": "#a98a7d",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-container": "#572000",
+                        "inverse-on-surface": "#313030",
+                        "background": "#131313",
+                        "on-error": "#690005",
+                        "primary": "#ffb693",
+                        "on-surface-variant": "#e2bfb0",
+                        "secondary": "#ffb693",
+                        "inverse-primary": "#a04100",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-bright": "#3a3939",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#402d1b",
+                        "on-tertiary": "#3f2d1b",
+                        "surface-tint": "#ffb693",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-dim": "#131313",
+                        "on-tertiary-fixed-variant": "#57432f",
+                        "on-surface": "#e5e2e1",
+                        "primary-fixed": "#ffdbcc",
+                        "on-tertiary-fixed": "#281808",
+                        "on-secondary-container": "#4b1b00",
+                        "tertiary-fixed": "#fcddc2",
+                        "surface-container-highest": "#353534",
+                        "secondary-fixed-dim": "#ffb693",
+                        "inverse-surface": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter": "16px",
+                        "safe-area-bottom": "32px",
+                        "touch-target-min": "48px",
+                        "container-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Montserrat"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0A0A0A;
+            color: #e5e2e1;
+            overflow-x: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid #2A2A2A;
+        }
+        .primary-glow {
+            box-shadow: 0px 4px 20px rgba(255, 107, 0, 0.2);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0A0A0A;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #332211;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #ff6b00;
+        }
+        .chart-gradient {
+            background: linear-gradient(180deg, rgba(255, 107, 0, 0.1) 0%, rgba(255, 107, 0, 0) 100%);
+        }
+    </style>
+</head>
+<body class="font-Inter">
+<!-- NAVIGATION SHELL: SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low shadow-sm z-50 flex flex-col py-gutter px-4">
+<div class="mb-10 px-4">
+<h1 class="font-Montserrat font-headline-lg-mobile text-primary tracking-tighter">Velocity Admin</h1>
+<p class="text-on-surface-variant font-Inter text-body-sm opacity-70">Operations Hub</p>
+</div>
+<nav class="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-semibold active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-Inter text-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-Inter text-body-sm">Drivers</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-Inter text-body-sm">Trip Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-Inter text-body-sm">Fares</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-Inter text-body-sm">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-outline-variant">
+<button class="w-full flex items-center justify-center gap-2 bg-error-container text-on-error-container py-3 px-4 rounded-lg font-bold transition-all active:scale-95 shadow-lg">
+<span class="material-symbols-outlined text-[18px]">emergency</span>
+<span class="font-Montserrat text-label-caps">Emergency Dispatch</span>
+</button>
+<div class="mt-6 flex items-center gap-3 px-2">
+<img class="w-10 h-10 rounded-full border-2 border-primary object-cover" data-alt="A professional headshot of a senior operations manager in a high-tech office setting, cool lighting with orange accent reflections on glass, dark modern theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1PFBVFYZYwKTqUTSDHojLj9dyOa5CP1qBxyp6J1mnp7GZpmgm_sY7t_SDafmMAaZlVGwic2r0MnoOX7PCF1MkedMKc5aGNpyens-sgMB_k4hvLpYnC-WeaIXh_1qyw9_Cb776isWvwA_cfdf6hGj5K6F6Sq71VkEDoRPoXy6LUR0CUhZje74STk8KWvI9oX0osEmTr8rYsSwAvbKV3Kp66HTIOHYe0Dj6z4Wp_vK8MnxExpp0imgq"/>
+<div>
+<p class="font-Inter text-body-sm font-semibold text-on-surface">Admin Profile</p>
+<p class="font-Inter text-body-sm text-on-surface-variant text-[10px] uppercase tracking-widest">Master Access</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- MAIN CANVAS -->
+<main class="ml-64 min-h-screen">
+<!-- TOP APP BAR -->
+<header class="flex justify-between items-center h-16 px-container-margin sticky top-0 z-40 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-full pl-10 pr-4 py-2 text-body-sm focus:ring-2 focus:ring-primary-container transition-all" placeholder="Search trips, drivers, or alerts..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300 relative">
+<span class="material-symbols-outlined text-on-surface">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300">
+<span class="material-symbols-outlined text-on-surface">help</span>
+</button>
+<button class="hover:bg-surface-container-high rounded-full p-2 transition-all duration-300">
+<span class="material-symbols-outlined text-on-surface">account_circle</span>
+</button>
+</div>
+</header>
+<!-- DASHBOARD CONTENT -->
+<div class="p-container-margin space-y-gutter">
+<!-- HEADER SECTION -->
+<div class="flex justify-between items-end mb-4">
+<div>
+<h2 class="font-Montserrat font-headline-lg text-on-surface">Operational Overview</h2>
+<p class="text-on-surface-variant font-Inter text-body-lg">Real-time performance tracking and system health.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 glass-card rounded-lg hover:bg-surface-variant transition-all">
+<span class="material-symbols-outlined text-body-sm">calendar_today</span>
+<span class="font-Inter text-body-sm">Last 30 Days</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary-container text-on-primary-container rounded-lg font-bold hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-body-sm">download</span>
+<span class="font-Inter text-body-sm">Export Report</span>
+</button>
+</div>
+</div>
+<!-- BENTO STATS GRID -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Total Revenue -->
+<div class="glass-card p-gutter rounded-xl hover:border-primary-container transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined text-primary">payments</span>
+</div>
+<span class="text-green-400 font-Inter text-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +12.4%
+                        </span>
+</div>
+<p class="text-on-surface-variant font-Montserrat text-label-caps mb-1">Total Revenue</p>
+<h3 class="font-Montserrat text-headline-lg text-on-surface">$1,284,590</h3>
+</div>
+<!-- Active Trips -->
+<div class="glass-card p-gutter rounded-xl hover:border-primary-container transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary-container/10 rounded-lg group-hover:bg-secondary-container/20 transition-all">
+<span class="material-symbols-outlined text-secondary-container">electric_car</span>
+</div>
+<span class="text-green-400 font-Inter text-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +8.1%
+                        </span>
+</div>
+<p class="text-on-surface-variant font-Montserrat text-label-caps mb-1">Active Trips</p>
+<h3 class="font-Montserrat text-headline-lg text-on-surface">1,429</h3>
+</div>
+<!-- Online Drivers -->
+<div class="glass-card p-gutter rounded-xl hover:border-primary-container transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary-container/10 rounded-lg group-hover:bg-tertiary-container/20 transition-all">
+<span class="material-symbols-outlined text-tertiary">person_pin_circle</span>
+</div>
+<span class="text-red-400 font-Inter text-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_down</span> -2.4%
+                        </span>
+</div>
+<p class="text-on-surface-variant font-Montserrat text-label-caps mb-1">Online Drivers</p>
+<h3 class="font-Montserrat text-headline-lg text-on-surface">3,812</h3>
+</div>
+<!-- Daily Active Users -->
+<div class="glass-card p-gutter rounded-xl hover:border-primary-container transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-on-primary-fixed-variant/10 rounded-lg group-hover:bg-on-primary-fixed-variant/20 transition-all">
+<span class="material-symbols-outlined text-primary-fixed">group</span>
+</div>
+<span class="text-green-400 font-Inter text-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +15.8%
+                        </span>
+</div>
+<p class="text-on-surface-variant font-Montserrat text-label-caps mb-1">Daily Active Users</p>
+<h3 class="font-Montserrat text-headline-lg text-on-surface">24.5K</h3>
+</div>
+</div>
+<!-- CENTRAL CONTENT: CHART & ALERTS -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Large Central Chart Area -->
+<div class="lg:col-span-8 glass-card rounded-xl p-gutter relative overflow-hidden">
+<div class="flex justify-between items-center mb-8 relative z-10">
+<div>
+<h4 class="font-Montserrat font-title-md text-on-surface">Trips vs Revenue</h4>
+<p class="text-on-surface-variant font-Inter text-body-sm">30-day performance growth analytics</p>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary-container"></span>
+<span class="text-on-surface-variant font-Inter text-body-sm">Revenue</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-outline"></span>
+<span class="text-on-surface-variant font-Inter text-body-sm">Trips</span>
+</div>
+</div>
+</div>
+<!-- Chart Mockup (Visual Representation) -->
+<div class="h-64 w-full relative flex items-end gap-1 px-2">
+
+<!-- Visual bars to represent a chart data -->
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[30%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[60%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[45%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[70%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[40%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[50%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[55%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[80%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[60%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[65%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[80%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[90%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[70%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[85%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[90%] relative group">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container/40 h-[95%] rounded-t-sm group-hover:bg-primary-container transition-all"></div>
+</div>
+<div class="flex-1 bg-primary rounded-t-sm h-[100%] relative group shadow-[0_0_15px_rgba(255,107,0,0.4)]">
+<div class="absolute bottom-0 left-0 w-full bg-primary-container h-[100%] rounded-t-sm"></div>
+</div>
+<!-- Current point tooltip mockup -->
+<div class="absolute top-10 right-10 p-3 bg-surface-container-high rounded-lg border border-outline-variant shadow-2xl animate-pulse">
+<p class="text-label-caps text-on-surface-variant">Current Peak</p>
+<p class="font-Montserrat font-title-md text-primary">$48,290.00</p>
+</div>
+</div>
+<div class="mt-4 flex justify-between px-2 text-on-surface-variant font-Inter text-[10px] uppercase tracking-widest">
+<span>Day 01</span>
+<span>Day 05</span>
+<span>Day 10</span>
+<span>Day 15</span>
+<span>Day 20</span>
+<span>Day 25</span>
+<span>Today</span>
+</div>
+</div>
+<!-- Recent Alerts Panel -->
+<div class="lg:col-span-4 glass-card rounded-xl p-gutter flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-Montserrat font-title-md text-on-surface">Recent Alerts</h4>
+<span class="bg-error-container/20 text-error px-2 py-1 rounded text-[10px] font-bold uppercase">4 Urgent</span>
+</div>
+<div class="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
+<!-- Alert Item 1 -->
+<div class="p-3 bg-surface-container-highest rounded-lg border-l-4 border-error hover:bg-surface-container-high transition-all">
+<div class="flex justify-between items-start mb-1">
+<span class="font-Inter text-body-sm font-bold text-on-surface">Urgent Support Ticket</span>
+<span class="text-[10px] text-on-surface-variant">2m ago</span>
+</div>
+<p class="text-on-surface-variant font-Inter text-body-sm line-clamp-1">#4921 - Driver reported accident on Highway 101...</p>
+<button class="mt-2 text-primary text-[12px] font-bold hover:underline">Take Action</button>
+</div>
+<!-- Alert Item 2 -->
+<div class="p-3 bg-surface-container-highest rounded-lg border-l-4 border-primary hover:bg-surface-container-high transition-all">
+<div class="flex justify-between items-start mb-1">
+<span class="font-Inter text-body-sm font-bold text-on-surface">New Driver Signup</span>
+<span class="text-[10px] text-on-surface-variant">15m ago</span>
+</div>
+<p class="text-on-surface-variant font-Inter text-body-sm">Marcus Sterling has completed background check...</p>
+<div class="mt-2 flex gap-2">
+<button class="px-3 py-1 bg-primary text-on-primary rounded text-[10px] font-bold">Approve</button>
+<button class="px-3 py-1 border border-outline rounded text-[10px] font-bold">View Profile</button>
+</div>
+</div>
+<!-- Alert Item 3 -->
+<div class="p-3 bg-surface-container-highest rounded-lg border-l-4 border-tertiary hover:bg-surface-container-high transition-all">
+<div class="flex justify-between items-start mb-1">
+<span class="font-Inter text-body-sm font-bold text-on-surface">Fleet Status Update</span>
+<span class="text-[10px] text-on-surface-variant">1h ago</span>
+</div>
+<p class="text-on-surface-variant font-Inter text-body-sm">Peak demand detected in Downtown District. Surge active.</p>
+</div>
+<!-- Alert Item 4 -->
+<div class="p-3 bg-surface-container-highest rounded-lg border-l-4 border-error hover:bg-surface-container-high transition-all">
+<div class="flex justify-between items-start mb-1">
+<span class="font-Inter text-body-sm font-bold text-on-surface">System Latency Spike</span>
+<span class="text-[10px] text-on-surface-variant">2h ago</span>
+</div>
+<p class="text-on-surface-variant font-Inter text-body-sm">API response time &gt; 500ms in region US-West.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- BOTTOM SECTION: LIVE MAP & DRIVER STATUS -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<div class="lg:col-span-2 glass-card rounded-xl h-80 relative overflow-hidden group">
+<div class="absolute inset-0 z-0 grayscale opacity-50 contrast-125">
+<div class="w-full h-full bg-cover bg-center" data-alt="A futuristic dark-themed map of a major city at night with glowing orange lines indicating traffic flow and animated taxi icons moving along high-contrast dark streets. The map style is sleek and technical with topographic subtle details." data-location="San Francisco" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAYnOKF8lkag_eDs1nDU_4XaZTRS_VzK17s0d1NQkx73Kp3I4WY2kjAcP_-6epDyaM2GwfukXq4rbsp_H3282End63FLjRQQcChk35ku__swbhABYoooDnqpSmJuFOVO7ed-5eGQyNyF3-l-rYSOJsUc9naMxGzrOXTnPxMdsWUuAKfykpHRuHOvneiSo3jCfCwUMjtdUJbsNyGK00WCQaBF-pasJx9u5VnDPZaSe6HE1jMNw2EnVuB')"></div>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 pointer-events-none"></div>
+<div class="absolute top-4 left-4 z-20 flex flex-col gap-2">
+<div class="bg-surface-container-high/90 backdrop-blur-md px-4 py-2 rounded-lg border border-outline-variant shadow-lg flex items-center gap-3">
+<span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+<span class="font-Montserrat text-label-caps text-on-surface">Live Fleet Status</span>
+</div>
+</div>
+<!-- Map Overlay Stats -->
+<div class="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
+<div class="bg-surface-container-low/80 backdrop-blur-md p-4 rounded-xl border border-outline-variant max-w-xs">
+<p class="text-label-caps text-primary mb-1">Active Hub</p>
+<h5 class="font-Montserrat font-title-md text-on-surface">San Francisco Central</h5>
+<p class="text-body-sm text-on-surface-variant mt-2">Currently experiencing 2.4x surge pricing due to high demand and low driver density.</p>
+</div>
+<button class="bg-primary-container text-on-primary-container p-3 rounded-full primary-glow active:scale-95 transition-all">
+<span class="material-symbols-outlined">zoom_out_map</span>
+</button>
+</div>
+</div>
+<div class="glass-card rounded-xl p-gutter h-80 flex flex-col">
+<h4 class="font-Montserrat font-title-md text-on-surface mb-6">Driver Leaderboard</h4>
+<div class="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
+<div class="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-lg transition-all">
+<span class="font-Montserrat text-label-caps text-primary w-4">1</span>
+<img class="w-10 h-10 rounded-full object-cover" data-alt="Close up portrait of a smiling delivery driver wearing a premium black uniform, urban city lights in the background, cinematic shallow depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBggEtcWNcvLrFuju7Zz8rOGijqfMYxXjw6ux6kQCu2QuKUGuS4ytDhuzdGRl44mSQ4Nq6xu671xrMDdH3GVeL3SvHrPEsK5hLGTe0aph82g5NmJjhOX0bcjcuwBjChmR1Kv7aBdz3cpTrDSYWmx_Rx40Gspzax-eF8tPJM8W85xb0uL5_JLFIcK8YMtiEQorJKC3p-plNqycLrnLUhdNJQTdIQQS7-S7CwUD67c_KvDqNEJHBmpoWm"/>
+<div class="flex-1">
+<p class="text-body-sm font-bold text-on-surface">Alex Chen</p>
+<p class="text-[10px] text-on-surface-variant uppercase">342 Trips / Week</p>
+</div>
+<div class="text-right">
+<p class="text-body-sm font-bold text-primary">4.98</p>
+<div class="flex gap-0.5 justify-end">
+<span class="material-symbols-outlined text-[10px] text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-lg transition-all">
+<span class="font-Montserrat text-label-caps text-on-surface-variant w-4">2</span>
+<img class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of a confident female driver in a high-end electric SUV, night photography with neon orange reflections on her face and the dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrNAaUEbFscQzzOn11YtNGTcip3FjKvVvt_aUtxicdCUT6xYwKGSyGwPcTV28PtoJtsDYh92rO-FpZcFmNJY13buRZ9cVDLEgY8eawAGEYVyGyPSo9ghTiDiIAmh-4HmXvtEHHC3291RaJXSoRrdaR_9dEKdua5j4RakjQgqQoJuPuVa0dqdbzKqlHRpTAfF9JwY1i9SB7HrsFeRpNL9l-sM8b4kJEfMGROHa2xkEot8GSzl0OKrGh"/>
+<div class="flex-1">
+<p class="text-body-sm font-bold text-on-surface">Elena Rodriguez</p>
+<p class="text-[10px] text-on-surface-variant uppercase">318 Trips / Week</p>
+</div>
+<div class="text-right">
+<p class="text-body-sm font-bold text-primary">4.95</p>
+<div class="flex gap-0.5 justify-end">
+<span class="material-symbols-outlined text-[10px] text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-lg transition-all">
+<span class="font-Montserrat text-label-caps text-on-surface-variant w-4">3</span>
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A focused male driver in his 40s wearing a high-quality leather jacket, modern car interior with digital displays, dark atmospheric lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGaVDFKcPHqtMngBOsVZqP0JgqLhFy4VAofWZ64MdlSQOhIwRhtFXASxd_A_sqeKmWgMkrIbZdv1UFRGdIIoVUEKLZ5GrPdM1-G81C4XsnS9vPYYSEMlCQb4sndXxSO629PyRYiSCMhjxUEiOnZ7BMwM-FDfRWhhNdkvfZs2e6J_bPbUU1X9mwVkWRCVaPJYKazwXwddaX5yNtdNDVQvEsaHwP6xYftL2YRNZIfOJhmDYtL65J0fAc"/>
+<div class="flex-1">
+<p class="text-body-sm font-bold text-on-surface">David Miller</p>
+<p class="text-[10px] text-on-surface-variant uppercase">302 Trips / Week</p>
+</div>
+<div class="text-right">
+<p class="text-body-sm font-bold text-primary">4.92</p>
+<div class="flex gap-0.5 justify-end">
+<span class="material-symbols-outlined text-[10px] text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-lg transition-all">
+<span class="font-Montserrat text-label-caps text-on-surface-variant w-4">4</span>
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A young female driver with a friendly expression in a futuristic car cabin, purple and orange ambient light, high resolution photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsNnAhN9nrnkwd7slT0gCXcrjksoVC2bQKrWt1bs-DOM_JbqbOkZBcQv9dh2AmuUsqsDWp2XkdZbII5i9kKyFcWNT6r76NgNR_VviMmex1eEX6f7Ze5o_bxiaCc6gd3Pi1En4uD5mXkJzmBIsXvSKRiA6XUmCW0Ki0IHrqxmj9-0qq9SRYNy027_Jlfy95h0c3a-CqglF8gfrN2kLsH4tZ-QGH4MtFd-dRWl7Mh8lGul6cRQFCfBw7"/>
+<div class="flex-1">
+<p class="text-body-sm font-bold text-on-surface">Sarah J.</p>
+<p class="text-[10px] text-on-surface-variant uppercase">288 Trips / Week</p>
+</div>
+<div class="text-right">
+<p class="text-body-sm font-bold text-primary">4.89</p>
+<div class="flex gap-0.5 justify-end">
+<span class="material-symbols-outlined text-[10px] text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- FLOATING ACTION BUTTON (Contextual - Active Trips Monitor) -->
+<button class="fixed bottom-10 right-10 w-14 h-14 bg-primary-container text-on-primary-container rounded-full shadow-2xl flex items-center justify-center group hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-[28px]">monitoring</span>
+<span class="absolute right-full mr-4 bg-surface-container-high text-on-surface px-3 py-1 rounded text-body-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-outline-variant">
+            Live Stream
+        </span>
+</button>
+<script>
+        // Micro-interactions for dashboard elements
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Simple mock for "Take Action" buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if (this.innerText.includes('Action') || this.innerText.includes('Approve')) {
+                    const originalText = this.innerText;
+                    this.innerHTML = '<span class="material-symbols-outlined animate-spin text-[12px]">sync</span> Processing';
+                    setTimeout(() => {
+                        this.innerText = 'Resolved';
+                        this.classList.replace('bg-primary', 'bg-green-600');
+                        this.classList.replace('text-on-primary', 'text-white');
+                        this.disabled = true;
+                    }, 1200);
+                }
+            });
+        });
+    </script>
+</body></html>
