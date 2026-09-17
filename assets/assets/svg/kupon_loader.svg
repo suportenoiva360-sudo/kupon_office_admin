@@ -1,0 +1,48 @@
+<svg fill="none" height="100%" width="100%" viewBox="0 0 160 160" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="i0" gradientUnits="userSpaceOnUse" spreadMethod="pad" x2="118.87" y2="64.64" x1="21.47" y1="64.64">
+<stop offset="74%" stop-color="#ff6b00" />
+<stop offset="100%" stop-color="#ff4d00" />
+</linearGradient>
+<linearGradient id="i1" gradientUnits="userSpaceOnUse" spreadMethod="pad" x2="120.48" y2="75.76" x1="56.26" y1="75.76">
+<stop offset="69%" stop-color="#ff6b00" />
+<stop offset="100%" stop-color="#ff4d00" />
+</linearGradient>
+<linearGradient id="i2" gradientUnits="userSpaceOnUse" spreadMethod="pad" x2="138.53" y2="91.04" x1="65.87" y1="91.04">
+<stop offset="58%" stop-color="#ff6b00" />
+<stop offset="100%" stop-color="#ff6b00" />
+</linearGradient>
+</defs>
+<g id="i3">
+<g opacity="0">
+<animate repeatCount="indefinite" attributeName="opacity" dur="0.833s" begin="0s" fill="freeze" values="0; 1; 1" keyTimes="0; 0.133333; 1" keySplines="0 0 1 1; 0 0 1 1" calcMode="spline" />
+<g transform="translate(80,80)">
+<animateTransform repeatCount="indefinite" type="translate" attributeName="transform" dur="0.833s" begin="0s" calcMode="spline" values="80 80; 0 0; 0 0" keyTimes="0; 0.133333; 1" keySplines="0 0.55 0.45 1; 0 0 1 1" fill="freeze" />
+<g transform="scale(0,0)">
+<animateTransform repeatCount="indefinite" type="scale" attributeName="transform" dur="0.833s" begin="0s" calcMode="spline" values="0 0; 1 1; 1 1" keyTimes="0; 0.133333; 1" keySplines="0 0.55 0.45 1; 0 0 1 1" fill="freeze" />
+<path fill="url(#i0)" d="M35.79,60.95C36.68,75.21,44.8,86.21,54.68,95.85C59.9,100.94,65.36,105.53,71.14,109.98C70.66,110.9,70.19,111.61,69.68,112.47C69.68,112.47,59.72,129.29,59.72,129.29C59.72,129.29,40.41,103.1,40.41,103.1C28.43,86.7,19.46,70.88,21.85,49.78C23.06,39.12,27.57,29.36,34.52,21.27C44.4,9.77,58.06,2.26,73.14,0.36C84.16,-0.88,95.2,1.08,105.2,5.88C110.16,8.27,114.65,11.16,118.88,14.68C113.81,16.79,109.12,18.71,104.42,21.12C97.64,17.26,90.27,15.02,82.55,14.6C74.51,14.18,66.76,15.73,59.66,19.41C52.48,23.2,46.38,28.54,41.96,35.37C37.01,43.01,35.24,51.89,35.81,60.96C35.81,60.96,35.79,60.95,35.79,60.95Z" />
+</g>
+</g>
+</g>
+<g opacity="0">
+<animate repeatCount="indefinite" attributeName="opacity" dur="0.833s" begin="0s" fill="freeze" values="0; 0; 1; 1" keyTimes="0; 0.033333; 0.266667; 1" keySplines="0 0 1 1; 0 0 1 1; 0 0 1 1" calcMode="spline" />
+<g transform="translate(80,80)">
+<animateTransform repeatCount="indefinite" type="translate" attributeName="transform" dur="0.833s" begin="0s" calcMode="spline" values="80 80; 80 80; 0 0; 0 0" keyTimes="0; 0.133333; 0.266666; 1" keySplines="0 0 1 1; 0 0.55 0.45 1; 0 0 1 1" fill="freeze" />
+<g transform="scale(0,0)">
+<animateTransform repeatCount="indefinite" type="scale" attributeName="transform" dur="0.833s" begin="0s" calcMode="spline" values="0 0; 0 0; 1 1; 1 1" keyTimes="0; 0.133333; 0.266666; 1" keySplines="0 0 1 1; 0 0.55 0.45 1; 0 0 1 1" fill="freeze" />
+<path fill="url(#i1)" d="M73.99,69.83C73.99,69.83,79.79,63.9,79.79,63.9C79.29,63.21,78.79,62.59,78.07,62.16C78.07,62.16,62.63,77.45,62.63,77.45C60.88,79.18,58.93,80.45,57.45,82.44C57.45,82.44,69.42,73.43,69.42,73.43C69.42,73.43,69.48,83.46,69.48,83.46C69.48,83.46,56.27,83.48,56.27,83.48C56.27,83.48,56.27,29.84,56.27,29.84C56.27,29.84,71.65,29.85,71.65,29.85C71.65,29.85,71.78,49.33,71.78,49.33C71.78,49.33,89.43,30.13,89.43,30.13C89.43,30.13,120.5,19.61,120.5,19.61C118.94,21.67,117.14,23.3,115.37,25.18C115.37,25.18,96.66,44,96.66,44C96.66,44,83.83,56.85,83.83,56.85C83.83,56.85,95.61,70.78,95.61,70.78C100.64,76.73,105.7,82.41,111.14,88.25C111.14,88.25,76.14,123.12,76.14,123.12C73.12,126.13,70.33,129.03,67.08,131.9C67.08,131.9,73.49,120.65,73.49,120.65C73.49,120.65,92.61,88.73,92.61,88.73C92.61,88.73,78.87,74.9,78.87,74.9C78.87,74.9,73.99,69.83,73.99,69.83C73.99,69.83,73.99,69.83,73.99,69.83Z" />
+</g>
+</g>
+</g>
+<g opacity="0">
+<animate repeatCount="indefinite" attributeName="opacity" dur="0.833s" begin="0s" fill="freeze" values="0; 0; 1; 1" keyTimes="0; 0.066667; 0.4; 1" keySplines="0 0 1 1; 0 0 1 1; 0 0 1 1" calcMode="spline" />
+<g transform="translate(80,80)">
+<animateTransform repeatCount="indefinite" type="translate" attributeName="transform" dur="0.833s" begin="0s" calcMode="spline" values="80 80; 80 80; 0 0; 0 0" keyTimes="0; 0.266666; 0.4; 1" keySplines="0 0 1 1; 0 0.55 0.45 1; 0 0 1 1" fill="freeze" />
+<g transform="scale(0,0)">
+<animateTransform repeatCount="indefinite" type="scale" attributeName="transform" dur="0.833s" begin="0s" calcMode="spline" values="0 0; 0 0; 1 1; 1 1" keyTimes="0; 0.266666; 0.4; 1" keySplines="0 0 1 1; 0 0.55 0.45 1; 0 0 1 1" fill="freeze" />
+<path fill="url(#i2)" d="M79.77,160C79.77,160,65.87,138.28,65.87,138.28C77.97,131.2,88.56,121.36,98.35,111.51C101.84,107.99,105.04,104.53,108.08,100.6C114.55,92.25,119.58,82.96,122.77,72.86C124.81,66.4,125.45,59.86,124.89,53.16C124.18,45.81,121.55,38.97,117.1,33.18C120.25,29.52,123.2,26,125.73,22.08C132.58,29.91,136.73,39.23,138.14,49.38C139.44,60.77,137.51,70.84,132.72,81.19C129.54,88.06,125.68,94.39,121.19,100.47C121.19,100.47,109.61,116.14,109.61,116.14C102.53,125.37,95.91,134.75,89.51,144.47C89.51,144.47,79.77,160,79.77,160C79.77,160,79.77,160,79.77,160Z" />
+</g>
+</g>
+</g>
+</g>
+</svg>

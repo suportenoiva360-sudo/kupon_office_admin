@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Camada_1" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 160 160">
+  <!-- Generator: Adobe Illustrator 30.1.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 136)  -->
+  <defs>
+    <linearGradient id="Gradiente_sem_nome_73" data-name="Gradiente sem nome 73" x1="21.47" y1="64.64" x2="118.87" y2="64.64" gradientUnits="userSpaceOnUse">
+      <stop offset=".74" stop-color="#FF6B00"/>
+      <stop offset="1" stop-color="#FF6B00"/>
+    </linearGradient>
+    <linearGradient id="Gradiente_sem_nome_69" data-name="Gradiente sem nome 69" x1="56.26" y1="75.76" x2="120.48" y2="75.76" gradientUnits="userSpaceOnUse">
+      <stop offset=".69" stop-color="#FF6B00"/>
+      <stop offset="1" stop-color="#FF6B00"/>
+    </linearGradient>
+    <linearGradient id="Gradiente_sem_nome_65" data-name="Gradiente sem nome 65" x1="65.87" y1="91.04" x2="138.53" y2="91.04" gradientUnits="userSpaceOnUse">
+      <stop offset=".58" stop-color="#FF6B00"/>
+      <stop offset="1" stop-color="#FF6B00"/>
+    </linearGradient>
+  </defs>
+  <path d="M35.79,60.95c.89,14.26,9.01,25.26,18.89,34.9,5.22,5.09,10.68,9.68,16.46,14.13-.48.92-.95,1.63-1.46,2.49l-9.96,16.82-19.31-26.19c-11.98-16.4-20.95-32.22-18.56-53.32,1.21-10.66,5.72-20.42,12.67-28.51C44.4,9.77,58.06,2.26,73.14.36c11.02-1.24,22.06.72,32.06,5.52,4.96,2.39,9.45,5.28,13.68,8.8-5.07,2.11-9.76,4.03-14.46,6.44-6.78-3.86-14.15-6.1-21.87-6.52-8.04-.42-15.79,1.13-22.89,4.81-7.18,3.79-13.28,9.13-17.7,15.96-4.95,7.64-6.72,16.52-6.15,25.59Z" fill="url(#Gradiente_sem_nome_73)"/>
+  <path d="M73.99,69.83l5.8-5.93c-.5-.69-1-1.31-1.72-1.74l-15.44,15.29c-1.75,1.73-3.7,3-5.18,4.99l11.97-9.01.06,10.03-13.21.02V29.84s15.38.01,15.38.01l.13,19.48,17.65-19.2,31.07-10.52c-1.56,2.06-3.36,3.69-5.13,5.57l-18.71,18.82-12.83,12.85,11.78,13.93c5.03,5.95,10.09,11.63,15.53,17.47l-35,34.87c-3.02,3.01-5.81,5.91-9.06,8.78l6.41-11.25,19.12-31.92-13.74-13.83-4.88-5.07Z" fill="url(#Gradiente_sem_nome_69)"/>
+  <path d="M79.77,160l-13.9-21.72c12.1-7.08,22.69-16.92,32.48-26.77,3.49-3.52,6.69-6.98,9.73-10.91,6.47-8.35,11.5-17.64,14.69-27.74,2.04-6.46,2.68-13,2.12-19.7-.71-7.35-3.34-14.19-7.79-19.98,3.15-3.66,6.1-7.18,8.63-11.1,6.85,7.83,11,17.15,12.41,27.3,1.3,11.39-.63,21.46-5.42,31.81-3.18,6.87-7.04,13.2-11.53,19.28l-11.58,15.67c-7.08,9.23-13.7,18.61-20.1,28.33l-9.74,15.53Z" fill="url(#Gradiente_sem_nome_65)"/>
+</svg>
