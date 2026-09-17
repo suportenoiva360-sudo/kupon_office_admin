@@ -1,9 +1,8 @@
 import 'dart:ui';
-import 'package:device_preview/device_preview.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/routes/app_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,7 +11,8 @@ import 'package:kupon_office_admin/core/providers/user_provider.dart';
 import 'package:kupon_office_admin/app/providers/map_style_provider.dart';
 
 void main() async {
-  DevicePreview.enable(enabled: false);
+  WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   await dotenv.load(fileName: 'assets/.env');
 

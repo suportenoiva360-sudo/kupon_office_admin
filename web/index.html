@@ -18,21 +18,65 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="KupON Admin — painel de administração da KupON">
+  <meta name="theme-color" content="#0A0A0A">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="kupon_office">
+  <meta name="apple-mobile-web-app-title" content="KupON Admin">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>kupon_office</title>
+  <title>KupON Admin</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0A0A0A;
+    }
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background-color: #0A0A0A;
+      z-index: 9999;
+      font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #splash .brand {
+      color: #E5E2E1;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    #splash .brand span { color: #E2BFB0; }
+    #splash .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(226, 191, 176, 0.25);
+      border-top-color: #E2BFB0;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
+  <div id="splash">
+    <div class="brand">Kup<span>ON</span> Admin</div>
+    <div class="spinner"></div>
+  </div>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -42,5 +86,22 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    (function () {
+      var tries = 0;
+      var timer = setInterval(function () {
+        var view = document.querySelector('flutter-view');
+        if (view && (view.shadowRoot ? view.shadowRoot.childElementCount > 0 : view.childElementCount > 0)) {
+          var splash = document.getElementById('splash');
+          if (splash) splash.remove();
+          clearInterval(timer);
+        } else if (++tries > 200) {
+          var splash = document.getElementById('splash');
+          if (splash) splash.remove();
+          clearInterval(timer);
+        }
+      }, 100);
+    })();
+  </script>
 </body>
 </html>
