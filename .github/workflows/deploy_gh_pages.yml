@@ -24,6 +24,22 @@ jobs:
       - name: Dependências
         run: flutter pub get
 
+      - name: Verificar secrets
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "::error::Falta o secret SUPABASE_URL. Adicione em Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Falta o secret SUPABASE_ANON_KEY. Adicione em Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Gerar assets/.env (a partir de secrets)
+        run: |
+          printf 'SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n' \
+            "${{ secrets.SUPABASE_URL }}" "${{ secrets.SUPABASE_ANON_KEY }}" > assets/.env
+
       - name: Build web otimizado
         run: flutter build web --release --tree-shake-icons --no-web-resources-cdn --base-href /kupon_office_admin/
 
