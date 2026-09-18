@@ -29,11 +29,13 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     ('base', 'TARIFA BASE (Kz)', Icons.flag_rounded),
     ('per_km', 'VALOR POR KM (Kz)', Icons.straighten_rounded),
     ('per_min', 'VALOR POR MIN (Kz)', Icons.timer_outlined),
+    ('minimum_fare', 'TARIFA MÍNIMA (Kz)', Icons.low_priority_rounded),
+    ('commission', 'COMISSÃO (%)', Icons.percent_rounded),
   ];
 
-  final _commissionCtrl = TextEditingController(text: '20');
-  final _peakMultCtrl = TextEditingController(text: '1.5');
-  final _nightMultCtrl = TextEditingController(text: '1.3');
+  // Janelas de demanda: grupo de 5 campos por janela
+  // [name, start_hour, end_hour, multiplier, id]
+  final List<TextEditingController> _windowFields = [];
 
   @override
   void initState() {
@@ -46,31 +48,60 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     _loadSettings();
   }
 
+  @override
+  void dispose() {
+    for (final map in _fares.values) {
+      for (final ctrl in map.values) {
+        ctrl.dispose();
+      }
+    }
+    for (final ctrl in _windowFields) {
+      ctrl.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _loadSettings() async {
     setState(() => _loading = true);
     try {
-      final rows = await _db.from('system_settings').select('*');
-      final settings = <String, dynamic>{};
-      for (final row in (rows as List)) {
-        settings[row['key'] as String] = row['value'];
+      final tariffRows = await _db
+          .from('tariffs')
+          .select(
+            'category,base_fare,per_km,per_minute,minimum_fare,commission_percentage,is_active',
+          )
+          .order('category');
+
+      for (final row in (tariffRows as List)) {
+        final cat = row['category'] as String?;
+        if (cat == null || !_fares.containsKey(cat)) continue;
+        if (row['is_active'] != true) continue;
+        _fares[cat]!['base']!.text = '${row['base_fare'] ?? ''}';
+        _fares[cat]!['per_km']!.text = '${row['per_km'] ?? ''}';
+        _fares[cat]!['per_min']!.text = '${row['per_minute'] ?? ''}';
+        _fares[cat]!['minimum_fare']!.text = '${row['minimum_fare'] ?? ''}';
+        _fares[cat]!['commission']!.text =
+            '${row['commission_percentage'] ?? ''}';
       }
 
-      for (final cat in _categories) {
-        for (final (field, _, _) in _fareFields) {
-          final key = 'fare_${cat}_$field';
-          if (settings.containsKey(key)) {
-            _fares[cat]![field]!.text = '${settings[key]}';
-          }
-        }
+      final windowRows = await _db
+          .from('peak_windows')
+          .select('id,name,start_hour,end_hour,multiplier,kind')
+          .eq('is_active', true)
+          .order('kind')
+          .order('start_hour');
+
+      for (final ctrl in _windowFields) {
+        ctrl.dispose();
       }
-      if (settings.containsKey('driver_commission')) {
-        _commissionCtrl.text = '${settings['driver_commission']}';
-      }
-      if (settings.containsKey('peak_multiplier')) {
-        _peakMultCtrl.text = '${settings['peak_multiplier']}';
-      }
-      if (settings.containsKey('night_multiplier')) {
-        _nightMultCtrl.text = '${settings['night_multiplier']}';
+      _windowFields.clear();
+      for (final row in (windowRows as List)) {
+        _windowFields.addAll([
+          TextEditingController(text: '${row['name'] ?? ''}'),
+          TextEditingController(text: '${row['start_hour'] ?? ''}'),
+          TextEditingController(text: '${row['end_hour'] ?? ''}'),
+          TextEditingController(text: '${row['multiplier'] ?? ''}'),
+          TextEditingController(text: '${row['id'] ?? ''}'),
+        ]);
       }
     } catch (_) {
       // Keep defaults
@@ -82,23 +113,28 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      final upserts = <Map<String, dynamic>>[];
-
       for (final cat in _categories) {
-        for (final (field, _, _) in _fareFields) {
-          upserts.add({
-            'key': 'fare_${cat}_$field',
-            'value': _fares[cat]![field]!.text.trim(),
-          });
-        }
+        await _db.from('tariffs').update({
+          'base_fare': _intOf(_fares[cat]!['base']!),
+          'per_km': _intOf(_fares[cat]!['per_km']!),
+          'per_minute': _intOf(_fares[cat]!['per_min']!),
+          'minimum_fare': _intOf(_fares[cat]!['minimum_fare']!),
+          'commission_percentage': _intOf(_fares[cat]!['commission']!),
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('category', cat).eq('is_active', true);
       }
-      upserts.addAll([
-        {'key': 'driver_commission', 'value': _commissionCtrl.text.trim()},
-        {'key': 'peak_multiplier', 'value': _peakMultCtrl.text.trim()},
-        {'key': 'night_multiplier', 'value': _nightMultCtrl.text.trim()},
-      ]);
 
-      await _db.from('system_settings').upsert(upserts);
+      for (var i = 0; i < _windowFields.length; i += 5) {
+        final id = _windowFields[i + 4].text.trim();
+        if (id.isEmpty) continue;
+        await _db.from('peak_windows').update({
+          'name': _windowFields[i].text.trim(),
+          'start_hour': _intOf(_windowFields[i + 1]),
+          'end_hour': _intOf(_windowFields[i + 2]),
+          'multiplier':
+              double.tryParse(_windowFields[i + 3].text.trim()) ?? 1.0,
+        }).eq('id', id);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -122,18 +158,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     }
   }
 
-  @override
-  void dispose() {
-    for (final map in _fares.values) {
-      for (final ctrl in map.values) {
-        ctrl.dispose();
-      }
-    }
-    _commissionCtrl.dispose();
-    _peakMultCtrl.dispose();
-    _nightMultCtrl.dispose();
-    super.dispose();
-  }
+  int _intOf(TextEditingController ctrl) => int.tryParse(ctrl.text.trim()) ?? 0;
 
   @override
   Widget build(BuildContext context) {
@@ -147,6 +172,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                 color: AppTheme.primaryContainer,
                 backgroundColor: AppTheme.surfaceContainerLow,
                 child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +183,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       const SizedBox(height: 24),
                       _buildSectionHeader(
                         'Tarifas por Categoria de Veículo',
-                        'Configure os parâmetros de tarifação base, quilometragem e tempo para cada modalidade.',
+                        'Configure tarifas base, por km, por minuto, mínimo e comissão da plataforma para cada modalidade.',
                         Icons.directions_car_filled_rounded,
                       ),
                       const SizedBox(height: 14),
@@ -169,12 +195,12 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       ),
                       const SizedBox(height: 20),
                       _buildSectionHeader(
-                        'Variáveis Globais & Comissões',
-                        'Controle de retenção de plataforma e multiplicadores dinâmicos de alta demanda.',
+                        'Janelas de Demanda',
+                        'Multiplicadores aplicados em janelas de pico e no período noturno (tabela peak_windows).',
                         Icons.tune_rounded,
                       ),
                       const SizedBox(height: 14),
-                      _buildGlobalParametersCard(),
+                      _buildPeakWindowsCard(),
                       const SizedBox(height: 32),
                       _buildSaveButton(),
                     ],
@@ -222,7 +248,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryContainer.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
@@ -241,7 +270,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Ajuste dinâmico de tarifas, taxas de motoristas e multiplicadores operacionais',
+                'Ajuste dinâmico de tarifas, comissões e multiplicadores operacionais',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
@@ -423,7 +452,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
           const SizedBox(height: 18),
           LayoutBuilder(
             builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 600;
+              final isNarrow = constraints.maxWidth < 700;
               if (isNarrow) {
                 return Column(
                   children: _fareFields.map((field) {
@@ -461,9 +490,48 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     );
   }
 
-  Widget _buildGlobalParametersCard() {
-    final commissionVal = double.tryParse(_commissionCtrl.text) ?? 20;
-    final driverKeeps = 100 - commissionVal;
+  Widget _buildPeakWindowsCard() {
+    if (_windowFields.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppTheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 20,
+              color: Color(0xFFF5C842),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Nenhuma janela de demanda ativa encontrada. Adicione janelas na tabela peak_windows.',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 12,
+                  color: const Color(0xFFE2BFB0).withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final windows = <Map<String, dynamic>>[];
+    for (var i = 0; i < _windowFields.length; i += 5) {
+      windows.add({
+        'name': _windowFields[i],
+        'start': _windowFields[i + 1],
+        'end': _windowFields[i + 2],
+        'mult': _windowFields[i + 3],
+      });
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -476,39 +544,20 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       ),
       child: Column(
         children: [
-          _buildSettingsRow(
-            Icons.percent_rounded,
-            'Taxa de Comissão KupOn (%)',
-            'Percentual retido pela plataforma por corrida',
-            _commissionCtrl,
-            suffix: '%',
-            color: AppTheme.primaryContainer,
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, color: Color(0xFF2A2A2A)),
-          ),
-          _buildSettingsRow(
-            Icons.trending_up_rounded,
-            'Multiplicador de Hora de Ponta (x)',
-            'Taxa aplicada em horários de pico ou alta procura',
-            _peakMultCtrl,
-            suffix: 'x',
-            color: const Color(0xFFF5C842),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, color: Color(0xFF2A2A2A)),
-          ),
-          _buildSettingsRow(
-            Icons.nightlight_round_outlined,
-            'Multiplicador Turno Noturno (x)',
-            'Taxa dinâmica para viagens entre 22h e 06h',
-            _nightMultCtrl,
-            suffix: 'x',
-            color: const Color(0xFF5AB0FF),
-          ),
-          const SizedBox(height: 18),
+          for (var i = 0; i < windows.length; i++) ...[
+            if (i > 0)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: Color(0xFF2A2A2A)),
+              ),
+            _buildWindowRow(
+              windows[i]['name'],
+              windows[i]['start'],
+              windows[i]['end'],
+              windows[i]['mult'],
+            ),
+          ],
+          const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -526,7 +575,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Exemplo de split: Em uma corrida de 5.000 Kz, o motorista recebe ${(5000 * (driverKeeps / 100)).toInt()} Kz (${driverKeeps.toInt()}%) e a KupOn retém ${(5000 * (commissionVal / 100)).toInt()} Kz (${commissionVal.toInt()}%).',
+                    'O multiplicador é aplicado à tarifa base quando a hora atual cai dentro da janela. Noite (22h–05h) e pico (06h–09h, 17h–20h).',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 11.5,
                       color: const Color(0xFFE2BFB0).withValues(alpha: 0.8),
@@ -541,89 +590,131 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     );
   }
 
-  Widget _buildSettingsRow(
-    IconData icon,
-    String label,
-    String desc,
-    TextEditingController ctrl, {
-    required String suffix,
-    required Color color,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.25)),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
+  Widget _buildWindowRow(
+    TextEditingController nameCtrl,
+    TextEditingController startCtrl,
+    TextEditingController endCtrl,
+    TextEditingController multCtrl,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 700;
+        if (isNarrow) {
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFE5E2E1),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                desc,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 11,
-                  color: const Color(0xFFE2BFB0).withValues(alpha: 0.55),
-                ),
+              _buildWindowName(nameCtrl),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: _buildHourField('Início (h)', startCtrl)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildHourField('Fim (h)', endCtrl)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildHourField('Mult (x)', multCtrl, isMult: true)),
+                ],
               ),
             ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(flex: 2, child: _buildWindowName(nameCtrl)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildHourField('Início (h)', startCtrl)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildHourField('Fim (h)', endCtrl)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildHourField('Mult (x)', multCtrl, isMult: true),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildWindowName(TextEditingController ctrl) {
+    return TextField(
+      controller: ctrl,
+      style: GoogleFonts.spaceGrotesk(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: const Color(0xFFE5E2E1),
+      ),
+      decoration: InputDecoration(
+        labelText: 'Nome da janela',
+        labelStyle: GoogleFonts.spaceGrotesk(
+          fontSize: 10,
+          color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        fillColor: AppTheme.surfaceContainerLowest,
+        filled: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(
+            color: AppTheme.primaryContainer,
+            width: 1.5,
           ),
         ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 90,
-          height: 42,
-          child: TextField(
-            controller: ctrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-            decoration: InputDecoration(
-              suffixText: suffix,
-              suffixStyle: GoogleFonts.spaceGrotesk(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              fillColor: AppTheme.surfaceContainerLowest,
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: color, width: 1.5),
-              ),
-            ),
+      ),
+    );
+  }
+
+  Widget _buildHourField(
+    String label,
+    TextEditingController ctrl, {
+    bool isMult = false,
+  }) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: isMult
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.number,
+      textAlign: TextAlign.center,
+      style: GoogleFonts.spaceGrotesk(
+        fontSize: 13.5,
+        fontWeight: FontWeight.w800,
+        color: isMult
+            ? const Color(0xFFF5C842)
+            : const Color(0xFFE5E2E1),
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.spaceGrotesk(
+          fontSize: 10,
+          color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        fillColor: AppTheme.surfaceContainerLowest,
+        filled: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: isMult
+                ? const Color(0xFFF5C842)
+                : AppTheme.primaryContainer,
+            width: 1.5,
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -663,7 +754,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
               color: const Color(0xFFE5E2E1),
             ),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               fillColor: AppTheme.surfaceContainerLowest,
               filled: true,
               border: OutlineInputBorder(
