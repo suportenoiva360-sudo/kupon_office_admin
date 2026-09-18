@@ -856,24 +856,26 @@ class _AdminSuportePageState extends State<AdminSuportePage>
           if (isOpen)
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: FilledButton.icon(
-                  onPressed: () => _closeTicket(ticket['id'] as String),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF93000A),
-                    foregroundColor: const Color(0xFFFFDAD6),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+              child: FilledButton.icon(
+                onPressed: () => _closeTicket(ticket['id'] as String),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF93000A),
+                  foregroundColor: const Color(0xFFFFDAD6),
+                  minimumSize: const Size(160, 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
-                  icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                  label: Text(
-                    'Concluir Chamado',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                label: Text(
+                  'Concluir Chamado',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
