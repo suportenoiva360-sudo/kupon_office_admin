@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/payment_requests_section.dart';
 
 class AdminFinanceiroPage extends StatefulWidget {
   const AdminFinanceiroPage({super.key});
@@ -219,6 +220,9 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                     _buildList(filter: (t) => t['type'] == 'ride_payment'),
                     _buildPendingTopups(),
                     _buildPendingSubs(),
+                    PaymentRequestsSection(
+                      adminId: _db.auth.currentUser?.id ?? '',
+                    ),
                   ],
                 ),
         ),
@@ -834,7 +838,16 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
+                    Tab(
+                      child: _tabLabel(
+                        icon: Icons.account_balance_wallet_rounded,
+                        text: 'Pagamentos',
+                        count: 0,
+                        badgeColor: const Color(0xFFB08A3F),
+                        showCountWhenZero: false,
+                      ),
+                    ),
+                  ],
                           ),
                         ),
                       ),
