@@ -245,8 +245,13 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
                             widget.driverId,
                             user['id'] as String?,
                           )
+                        else if (_selectedTab == 1)
+                          _buildTripsTab()
                         else
-                          _buildTripsTab(),
+                          _buildDocumentsTab(
+                            widget.driverId,
+                            user['id'] as String?,
+                          ),
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -384,6 +389,7 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
         children: [
           _tabItem(0, 'Informações', Icons.info_outline_rounded),
           _tabItem(1, 'Histórico', Icons.history_rounded),
+          _tabItem(2, 'Documentos', Icons.folder_rounded),
         ],
       ),
     );
@@ -543,6 +549,36 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentsTab(String driverId, String? userId) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Documentos do motorista',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          DriverDocumentsSection(driverId: driverId, userId: userId),
+          const SizedBox(height: 8),
+          Text(
+            'A revisão manual garante que os documentos estão legíveis e '
+            'dentro da validade antes de aprovar.',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              color: AppTheme.onSurfaceVariant,
             ),
           ),
         ],
