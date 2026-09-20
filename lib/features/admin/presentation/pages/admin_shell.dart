@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/providers/user_provider.dart';
+import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/core/routes/app_router.dart'
     show invalidateAdminCache;
+import 'package:kupon_office_admin/features/admin/application/admin_activity_center.dart';
 
 class AdminShell extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -68,9 +70,43 @@ class _AdminShellState extends State<AdminShell> {
   @override
   void initState() {
     super.initState();
+    AdminActivityCenter.instance.onActivity = _onNewActivity;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserProvider>().loadAll();
+      AdminActivityCenter.instance.init();
     });
+  }
+
+  @override
+  void dispose() {
+    AdminActivityCenter.instance.onActivity = null;
+    super.dispose();
+  }
+
+  /// Aviso discreto quando chega atividade nova em tempo real.
+  void _onNewActivity(AdminActivityItem item) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          item.title,
+          style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF1C1B1B),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Ver',
+          textColor: AppTheme.primaryContainer,
+          onPressed: () {
+            if (mounted) context.go(item.route);
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -235,6 +271,8 @@ class _AdminShellState extends State<AdminShell> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    _buildBell(),
                     IconButton(
                       icon: const Icon(
                         Icons.logout_rounded,
@@ -347,6 +385,304 @@ class _AdminShellState extends State<AdminShell> {
         ),
       ),
     );
+  }
+
+  Widget _buildBell() {
+    final center = AdminActivityCenter.instance;
+    return ListenableBuilder(
+      listenable: center,
+      builder: (context, _) {
+        final unreadCount = center.unreadCount;
+        return MenuAnchor(
+          style: const MenuStyle(
+            backgroundColor: WidgetStatePropertyAll(Color(0xFF1C1B1B)),
+            elevation: WidgetStatePropertyAll(8),
+            padding: WidgetStatePropertyAll(EdgeInsets.zero),
+          ),
+          menuChildren: [_buildActivityMenu(center)],
+          builder: (context, controller, child) => IconButton(
+            onPressed: () {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            },
+            icon: Badge(
+              isLabelVisible: unreadCount > 0,
+              label: Text(unreadCount > 9 ? '9+' : '$unreadCount'),
+              backgroundColor: const Color(0xFFFF6B00),
+              textColor: Colors.white,
+              child: Icon(
+                unreadCount > 0
+                    ? Icons.notifications_rounded
+                    : Icons.notifications_outlined,
+                color: const Color(0xFFE2BFB0).withValues(alpha: 0.75),
+                size: 20,
+              ),
+            ),
+            tooltip: 'Atividade',
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityMenu(AdminActivityCenter center) {
+    final items = center.items;
+    final unreadIds = center.unreadItems.map((e) => e.id).toSet();
+    final hasUnread = unreadIds.isNotEmpty;
+    return Container(
+      width: 320,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1B1B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Atividade',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFE5E2E1),
+                    ),
+                  ),
+                ),
+                if (hasUnread)
+                  TextButton(
+                    onPressed: center.markAllRead,
+                    child: Text(
+                      'Marcar lido',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFFF6B00),
+                      ),
+                    ),
+                  ),
+                IconButton(
+                  tooltip: 'Atualizar',
+                  onPressed: center.loading ? null : center.refresh,
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    size: 16,
+                    color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Color(0xFF2A2A2A), height: 1),
+          if (center.error != null) _activityError(center),
+          Flexible(
+            child: (center.loading && items.isEmpty)
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 28),
+                    child: Center(child: KuponLoader(size: 64)),
+                  )
+                : items.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          size: 32,
+                          color: const Color(
+                            0xFFE2BFB0,
+                          ).withValues(alpha: 0.4),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Sem atividade no momento',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12,
+                            color: const Color(
+                              0xFFE2BFB0,
+                            ).withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 360),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => const Divider(
+                        color: Color(0xFF2A2A2A),
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                      ),
+                      // `context` here belongs to the menu overlay, which is the
+                      // only context from which MenuController is reachable.
+                      itemBuilder: (context, i) {
+                        final item = items[i];
+                        return _buildActivityTile(
+                          context,
+                          item,
+                          unreadIds.contains(item.id),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Banner de erro do feed (permite recarregar sem fechar o menu).
+  Widget _activityError(AdminActivityCenter center) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+      color: const Color(0xFFCF6679).withValues(alpha: 0.12),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 16,
+            color: Color(0xFFCF6679),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              center.error!,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                color: const Color(0xFFCF6679),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: center.loading ? null : center.refresh,
+            child: Text(
+              'Tentar novamente',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFCF6679),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityTile(
+    BuildContext context,
+    AdminActivityItem item,
+    bool isUnread,
+  ) {
+    final (icon, accent) = switch (item.kind) {
+      'sos' => (Icons.emergency, const Color(0xFFCF6679)),
+      'approval' => (Icons.directions_car_rounded, const Color(0xFFFF6B00)),
+      _ => (Icons.support_agent_rounded, const Color(0xFFE2BFB0)),
+    };
+    final titleColor = const Color(
+      0xFFE5E2E1,
+    ).withValues(alpha: isUnread ? 1 : 0.55);
+    return InkWell(
+      onTap: () {
+        MenuController.maybeOf(context)?.close();
+        AdminActivityCenter.instance.markSeen(item.id);
+        context.go(item.route);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: accent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12.5,
+                            fontWeight: isUnread
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: titleColor,
+                          ),
+                        ),
+                      ),
+                      if (isUnread)
+                        Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.only(right: 6),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF6B00),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      Text(
+                        _timeAgo(item.at),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10,
+                          color: const Color(
+                            0xFFE2BFB0,
+                          ).withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _timeAgo(DateTime at) {
+    final diff = DateTime.now().difference(at);
+    if (diff.inMinutes < 1) return 'agora';
+    if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'há ${diff.inHours} h';
+    return '${at.day.toString().padLeft(2, '0')}/${at.month.toString().padLeft(2, '0')}';
   }
 
   Future<void> _logout() async {
