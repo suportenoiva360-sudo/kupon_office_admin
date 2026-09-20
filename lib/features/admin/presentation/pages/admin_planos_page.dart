@@ -59,9 +59,9 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
     } else if (_statusFilter == 'inactive') {
       list = list.where((p) => p['is_active'] != true).toList();
     } else if (_statusFilter == 'monthly') {
-      list = list.where((p) => (p['period_days'] as int? ?? 30) <= 30).toList();
+      list = list.where((p) => (p['period'] as String? ?? 'monthly') == 'monthly').toList();
     } else if (_statusFilter == 'annual') {
-      list = list.where((p) => (p['period_days'] as int? ?? 30) > 30).toList();
+      list = list.where((p) => (p['period'] as String? ?? 'monthly') == 'annual').toList();
     }
 
     return list;
@@ -466,11 +466,11 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                 DropdownMenuItem(value: 'inactive', child: Text('Inativos')),
                 DropdownMenuItem(
                   value: 'monthly',
-                  child: Text('Planos Mensais (≤ 30d)'),
+                  child: Text('Planos Mensais'),
                 ),
                 DropdownMenuItem(
                   value: 'annual',
-                  child: Text('Planos Anuais (> 30d)'),
+                  child: Text('Planos Anuais'),
                 ),
               ],
               onChanged: (v) {
@@ -483,20 +483,48 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
     );
   }
 
+  Widget _recBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF6B00).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: const Color(0xFFFF6B00).withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, size: 11, color: Color(0xFFFF6B00)),
+          const SizedBox(width: 3),
+          Text(
+            'RECOMENDADO',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: const Color(0xFFFF6B00),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPlanCard(Map<String, dynamic> plan) {
     final name = plan['name'] as String? ?? '–';
     final price = (plan['price'] as num?)?.toInt() ?? 0;
     final credits = (plan['credits'] as num?)?.toInt() ?? 0;
     final tripQuota = (plan['trip_quota'] as num?)?.toInt() ?? 0;
-    final period = plan['period_days'] as int? ?? 30;
+    final period = (plan['period'] as String? ?? 'monthly') == 'annual'
+        ? 'Anual (12 meses)'
+        : 'Mensal (30 dias)';
     final isActive = plan['is_active'] as bool? ?? true;
+    final isRecommended = plan['is_recommended'] as bool? ?? false;
     final description = plan['description'] as String?;
 
-    final periodLabel = period == 30
-        ? 'Mensal (30 dias)'
-        : period == 365
-        ? 'Anual (12 meses)'
-        : '$period dias';
+    final periodLabel = period;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -562,6 +590,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                         ),
                         const SizedBox(width: 8),
                         _activeBadge(isActive),
+                        if (isRecommended) ...[_recBadge()],
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -582,6 +611,30 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                 ),
                 onSelected: (v) => _onMenu(v, plan),
                 itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'recommend',
+                    child: Row(
+                      children: [
+                        Icon(
+                          isRecommended
+                              ? Icons.star_outline_rounded
+                              : Icons.star_rounded,
+                          size: 16,
+                          color: const Color(0xFFFF6B00),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isRecommended
+                              ? 'Remover Recomendação'
+                              : 'Recomendar na Loja',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 13,
+                            color: const Color(0xFFE5E2E1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   PopupMenuItem(
                     value: isActive ? 'deactivate' : 'activate',
                     child: Row(
@@ -830,6 +883,37 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
     );
   }
 
+  Future<void> _toggleRecommended(Map<String, dynamic> plan) async {
+    final willRecommend = plan['is_recommended'] != true;
+    try {
+      if (willRecommend) {
+        await _db
+            .from('subscription_plans')
+            .update({'is_recommended': false})
+            .eq(
+              'period',
+              (plan['period'] as String? ?? 'monthly') == 'annual'
+                  ? 'annual'
+                  : 'monthly',
+            )
+            .neq('id', plan['id']);
+      }
+      await _db
+          .from('subscription_plans')
+          .update({'is_recommended': willRecommend})
+          .eq('id', plan['id']);
+      if (!mounted) return;
+      _showSnack(
+        willRecommend
+            ? 'Plano recomendado na loja.'
+            : 'Recomendação removida.',
+      );
+      _load();
+    } catch (e) {
+      _showSnack('Erro ao atualizar plano: ${_errMsg(e)}', error: true);
+    }
+  }
+
   void _showSnack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -862,13 +946,21 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
           );
         }
         break;
+      case 'recommend':
+        _toggleRecommended(plan);
+        break;
       case 'edit':
         _openForm(context, plan: plan);
         break;
       case 'delete':
+        // `showDialog` pushes on the ROOT navigator (useRootNavigator: true by
+        // default), so the dialog must be popped with its own builder context.
+        // Using the page context here popped the shell branch Navigator instead
+        // — which desyncs go_router and leaves that Navigator locked
+        // ('!_debugLocked' assertions on the next navigation/dispose).
         final ok = await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             backgroundColor: AppTheme.surfaceContainerHigh,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -893,7 +985,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => Navigator.pop(dialogContext, false),
                     child: Text(
                       'Cancelar',
                       style: GoogleFonts.spaceGrotesk(
@@ -904,7 +996,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () => Navigator.pop(dialogContext, true),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFCF6679),
                       minimumSize: const Size(64, 40),
@@ -964,6 +1056,13 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
           if (plan == null) {
             await _db.from('subscription_plans').insert(data);
           } else {
+            if (data['is_recommended'] == true) {
+              await _db
+                  .from('subscription_plans')
+                  .update({'is_recommended': false})
+                  .eq('period', data['period'] as String? ?? 'monthly')
+                  .neq('id', plan['id']);
+            }
             await _db
                 .from('subscription_plans')
                 .update(data)
@@ -996,9 +1095,11 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
   final _priceCtrl = TextEditingController();
   final _creditsCtrl = TextEditingController();
   final _tripQuotaCtrl = TextEditingController();
-  final _periodCtrl = TextEditingController(text: '30');
+  final _periodCtrl = TextEditingController(text: 'monthly');
   final _descCtrl = TextEditingController();
+  final _featuresCtrl = TextEditingController();
   bool _saving = false;
+  bool _recommended = false;
 
   @override
   void initState() {
@@ -1009,8 +1110,13 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
       _priceCtrl.text = '${p['price'] ?? ''}';
       _creditsCtrl.text = '${p['credits'] ?? ''}';
       _tripQuotaCtrl.text = '${p['trip_quota'] ?? ''}';
-      _periodCtrl.text = '${p['period_days'] ?? 30}';
+      _periodCtrl.text = p['period'] as String? ?? 'monthly';
       _descCtrl.text = p['description'] ?? '';
+      _recommended = p['is_recommended'] as bool? ?? false;
+      final features = p['features'];
+      _featuresCtrl.text = features is List
+          ? features.map((e) => e.toString()).join('\n')
+          : '';
     }
   }
 
@@ -1022,6 +1128,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
     _tripQuotaCtrl.dispose();
     _periodCtrl.dispose();
     _descCtrl.dispose();
+    _featuresCtrl.dispose();
     super.dispose();
   }
 
@@ -1044,9 +1151,18 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
         'credits': num.tryParse(_creditsCtrl.text) ?? 0,
         if (_tripQuotaCtrl.text.isNotEmpty)
           'trip_quota': int.tryParse(_tripQuotaCtrl.text) ?? 0,
-        'period_days': int.tryParse(_periodCtrl.text) ?? 30,
+        'period': _periodCtrl.text == 'annual' ? 'annual' : 'monthly',
         if (_descCtrl.text.isNotEmpty) 'description': _descCtrl.text.trim(),
         'is_active': true,
+        if (_recommended) 'is_recommended': true,
+        if (_featuresCtrl.text.trim().isNotEmpty)
+          'features': _featuresCtrl.text
+              .split('\n')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
+        else if (widget.plan != null)
+          'features': <String>[],
       });
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -1320,7 +1436,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'VIGÊNCIA (DIAS)',
+                        'VIGÊNCIA',
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -1329,15 +1445,30 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      TextField(
-                        controller: _periodCtrl,
-                        keyboardType: TextInputType.number,
+                      DropdownButtonFormField<String>(
+                        initialValue: _periodCtrl.text == 'annual'
+                            ? 'annual'
+                            : 'monthly',
+                        dropdownColor: AppTheme.surfaceContainerHigh,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'monthly',
+                            child: Text('Mensal (30 dias)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'annual',
+                            child: Text('Anual (12 meses)'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) _periodCtrl.text = v;
+                        },
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 13,
                           color: const Color(0xFFE5E2E1),
                         ),
                         decoration: InputDecoration(
-                          hintText: '30 para mensal, 365 para anual',
+                          hintText: 'Mensal ou Anual',
                           hintStyle: GoogleFonts.spaceGrotesk(
                             fontSize: 12,
                             color: const Color(
@@ -1396,6 +1527,113 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                 hintStyle: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   color: const Color(0xFFE2BFB0).withValues(alpha: 0.35),
+                ),
+                fillColor: AppTheme.surfaceContainerLowest,
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: AppTheme.primaryContainer,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => setState(() => _recommended = !_recommended),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _recommended
+                      ? AppTheme.primaryContainer.withValues(alpha: 0.08)
+                      : AppTheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _recommended
+                        ? AppTheme.primaryContainer.withValues(alpha: 0.5)
+                        : const Color(0xFF2A2A2A),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _recommended
+                          ? Icons.check_box_rounded
+                          : Icons.check_box_outline_blank_rounded,
+                      size: 20,
+                      color: _recommended
+                          ? AppTheme.primaryContainer
+                          : const Color(0xFFE2BFB0).withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recomendar este plano na loja',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFE5E2E1),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Apenas um plano por período pode ser recomendado — ao marcar, o anterior perde o destaque.',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              color: const Color(
+                                0xFFE2BFB0,
+                              ).withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'BENEFÍCIOS (um por linha)',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _featuresCtrl,
+              maxLines: 4,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                color: const Color(0xFFE5E2E1),
+              ),
+              decoration: InputDecoration(
+                hintText:
+                    'Ex: 10 corridas/mês\nDesconto de 5%\nSuporte por chat',
+                hintStyle: GoogleFonts.spaceGrotesk(
+                  fontSize: 12,
+                  color: const Color(
+                    0xFFE2BFB0,
+                  ).withValues(alpha: 0.35),
                 ),
                 fillColor: AppTheme.surfaceContainerLowest,
                 filled: true,
