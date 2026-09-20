@@ -60,11 +60,7 @@ final GoRouter appRouter = GoRouter(
 
     if (loggedIn && !onLogin) {
       final admin = await _isAdmin();
-      if (!admin) {
-        invalidateAdminCache();
-        await Supabase.instance.client.auth.signOut();
-        return '/login';
-      }
+      if (!admin) return '/login';
     }
 
     return null;
