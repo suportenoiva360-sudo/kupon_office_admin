@@ -56,7 +56,10 @@ final GoRouter appRouter = GoRouter(
     final onLogin = state.matchedLocation == '/login';
 
     if (!loggedIn && !onLogin) return '/login';
-    if (loggedIn && onLogin) return '/dashboard';
+    if (loggedIn && onLogin) {
+      final admin = await _isAdmin();
+      return admin ? '/dashboard' : null;
+    }
 
     if (loggedIn && !onLogin) {
       final admin = await _isAdmin();
