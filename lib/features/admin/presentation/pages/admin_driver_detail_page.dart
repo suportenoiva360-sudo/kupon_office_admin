@@ -19,6 +19,7 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
   final _db = Supabase.instance.client;
   bool _loading = true;
   bool _saving = false;
+  bool _loadFailed = false;
   Map<String, dynamic>? _driver;
   List<Map<String, dynamic>> _trips = [];
   int _selectedTab = 0;
@@ -53,10 +54,16 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
           _driver = driver;
           _trips = List<Map<String, dynamic>>.from(trips as List);
           _loading = false;
+          _loadFailed = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadFailed = true;
+        });
+      }
     }
   }
 
@@ -67,24 +74,30 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
           .from('drivers')
           .update({'is_approved': approve})
           .eq('id', widget.driverId);
+      if (!mounted) return;
       setState(() {
         _driver?['is_approved'] = approve;
         _saving = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              approve ? 'Motorista aprovado com sucesso' : 'Aprovação revogada',
-            ),
-            backgroundColor: approve
-                ? const Color(0xFF4CAF88)
-                : const Color(0xFFCF6679),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            approve ? 'Motorista aprovado com sucesso' : 'Aprovação revogada',
           ),
-        );
-      }
+          backgroundColor: approve
+              ? const Color(0xFF4CAF88)
+              : const Color(0xFFCF6679),
+        ),
+      );
     } catch (e) {
-      if (mounted) setState(() => _saving = false);
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao atualizar aprovação: $e'),
+          backgroundColor: const Color(0xFFCF6679),
+        ),
+      );
     }
   }
 
@@ -109,7 +122,36 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
             ),
           ),
         ),
-        body: const Center(child: Text('Motorista nao encontrado')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _loadFailed
+                    ? 'Não foi possível carregar o motorista.'
+                    : 'Motorista nao encontrado',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  color: const Color(0xFFE2BFB0),
+                ),
+              ),
+              if (_loadFailed) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _loading = true;
+                      _loadFailed = false;
+                    });
+                    _load();
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Tentar novamente'),
+                ),
+              ],
+            ],
+          ),
+        ),
       );
     }
 

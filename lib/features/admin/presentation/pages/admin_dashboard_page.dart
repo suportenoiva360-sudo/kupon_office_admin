@@ -30,6 +30,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
   Timer? _refreshDebounce;
 
   bool _loading = true;
+  bool _loadFailed = false;
+  bool _lastFailedNotified = false;
   int _revenue30d = 0;
   int _prevRevenue30d = 0;
   int _trips24h = 0;
@@ -207,12 +209,42 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
           _daily = snap.daily;
           _alerts = snap.alerts;
           _loading = false;
+          _loadFailed = snap.hadFailures;
+          if (!snap.hadFailures) _lastFailedNotified = false;
         });
+        if (snap.hadFailures) _notifyLossOfFreshness();
       }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadFailed = true;
+        });
+        _notifyLossOfFreshness();
+      }
     }
     _loadLeaderboard();
+  }
+
+  void _onLoadFailed() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Não foi possível atualizar todos os dados. A mostrar os valores '
+          'mais recentes disponíveis.',
+        ),
+        backgroundColor: const Color(0xFFCF6679),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _notifyLossOfFreshness() {
+    if (!mounted) return;
+    if (_lastFailedNotified) return;
+    _lastFailedNotified = true;
+    _onLoadFailed();
   }
 
   DateTimeRange get _lbRange {
@@ -252,7 +284,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
       );
       if (mounted) setState(() => _lbData = data);
     } catch (e) {
-      print('[LEADERBOARD ERROR] $e');
+      debugPrint('[LEADERBOARD ERROR] $e');
       if (mounted) setState(() => _lbData = []);
     }
     if (mounted) setState(() => _lbLoading = false);
@@ -422,6 +454,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_loadFailed) ...[
+                      _buildFreshnessBanner(),
+                      const SizedBox(height: 24),
+                    ],
                     _buildHeader(),
                     const SizedBox(height: 24),
                     _buildBentoStatsGrid(),
@@ -605,6 +641,59 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     );
 
     AdminExportReportDialog.show(context, reportData);
+  }
+
+  Widget _buildFreshnessBanner() {
+    const msg =
+        'Não foi possível carregar todos os dados. A mostrar os '
+        'valores mais recentes disponíveis.';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A1B21),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFCF6679).withValues(alpha: .5),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            color: Color(0xFFCF6679),
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              msg,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                height: 1.4,
+                color: const Color(0xFFE6B7BE),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Tentar de novo',
+            onPressed: () {
+              setState(() {
+                _loading = true;
+                _loadFailed = false;
+              });
+              _loadData();
+            },
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: Color(0xFFCF6679),
+              size: 20,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHeader() {

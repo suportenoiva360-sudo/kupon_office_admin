@@ -64,6 +64,7 @@ class DashboardSnapshot {
   final List<DailyPoint> daily;
   final List<DashAlert> alerts;
   final List<Map<String, dynamic>> topDrivers;
+  final bool hadFailures;
 
   const DashboardSnapshot({
     required this.revenue30d,
@@ -80,6 +81,7 @@ class DashboardSnapshot {
     required this.daily,
     required this.alerts,
     required this.topDrivers,
+    this.hadFailures = false,
   });
 }
 
@@ -102,10 +104,12 @@ class DashboardRepository {
     final daysInPeriod =
         (rangeEnd.difference(rangeStart).inDays + 1).clamp(1, 90);
 
+    var failedCount = 0;
     Future<T> safe<T>(Future<T> Function() fn, T fallback) async {
       try {
         return await fn();
       } catch (_) {
+        failedCount++;
         return fallback;
       }
     }
@@ -167,6 +171,7 @@ class DashboardRepository {
       daily: results[11] as List<DailyPoint>,
       alerts: results[12] as List<DashAlert>,
       topDrivers: results[13] as List<Map<String, dynamic>>,
+      hadFailures: failedCount > 0,
     );
   }
 

@@ -777,11 +777,28 @@ class _AdminSosPageState extends State<AdminSosPage> {
   }
 
   Future<void> _resolveAlert(String alertId) async {
-    await _db
-        .from('sos_alerts')
-        .update({'status': 'resolved'})
-        .eq('id', alertId);
-    _load();
+    try {
+      await _db
+          .from('sos_alerts')
+          .update({'status': 'resolved'})
+          .eq('id', alertId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Alerta resolvido.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao resolver alerta: $e'),
+          backgroundColor: const Color(0xFFCF6679),
+        ),
+      );
+    }
   }
 
   Widget _statusChip(String status) {

@@ -872,11 +872,32 @@ class _AdminPromocoesPageState extends State<AdminPromocoesPage> {
     switch (action) {
       case 'activate':
       case 'deactivate':
-        await _db
-            .from('promotions')
-            .update({'is_active': action == 'activate'})
-            .eq('id', promo['id']);
-        _load();
+        try {
+          await _db
+              .from('promotions')
+              .update({'is_active': action == 'activate'})
+              .eq('id', promo['id']);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  action == 'activate' ? 'Cupom ativado.' : 'Cupom pausado.',
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          _load();
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Erro ao atualizar cupom: $e'),
+                backgroundColor: const Color(0xFFCF6679),
+              ),
+            );
+          }
+        }
         break;
       case 'edit':
         _openForm(context, promo: promo);

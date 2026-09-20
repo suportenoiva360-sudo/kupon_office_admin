@@ -402,6 +402,7 @@ class _AdminShellState extends State<AdminShell> {
     if (confirmed == true && mounted) {
       invalidateAdminCache();
       await Supabase.instance.client.auth.signOut();
+      if (!mounted) return;
       context.go('/login');
     }
   }

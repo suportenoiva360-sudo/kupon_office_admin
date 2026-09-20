@@ -830,15 +830,37 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
     );
   }
 
+  void _showSnack(String msg, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: error ? const Color(0xFFCF6679) : null,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _onMenu(String action, Map<String, dynamic> plan) async {
     switch (action) {
       case 'activate':
       case 'deactivate':
-        await _db
-            .from('subscription_plans')
-            .update({'is_active': action == 'activate'})
-            .eq('id', plan['id']);
-        _load();
+        try {
+          await _db
+              .from('subscription_plans')
+              .update({'is_active': action == 'activate'})
+              .eq('id', plan['id']);
+          if (!mounted) return;
+          _showSnack(
+            action == 'activate' ? 'Plano ativado.' : 'Plano desativado.',
+          );
+          _load();
+        } catch (e) {
+          _showSnack(
+            'Erro ao atualizar plano: ${_errMsg(e)}',
+            error: true,
+          );
+        }
         break;
       case 'edit':
         _openForm(context, plan: plan);
@@ -900,12 +922,32 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
             ],
           ),
         );
+        if (!mounted) return;
         if (ok == true) {
-          await _db.from('subscription_plans').delete().eq('id', plan['id']);
-          _load();
+          try {
+            await _db
+                .from('subscription_plans')
+                .delete()
+                .eq('id', plan['id']);
+            if (!mounted) return;
+            _showSnack('Plano excluído.');
+            _load();
+          } catch (e) {
+            _showSnack('Erro ao excluir plano: ${_errMsg(e)}', error: true);
+          }
         }
         break;
     }
+  }
+
+  String _errMsg(Object e) {
+    if (e is PostgrestException) {
+      if (e.code == '23503') {
+        return 'não é possível excluir: existem assinaturas ativas associadas.';
+      }
+      return e.message;
+    }
+    return '$e';
   }
 
   void _openForm(BuildContext ctx, {Map<String, dynamic>? plan}) {

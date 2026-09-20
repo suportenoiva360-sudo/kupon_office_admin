@@ -15,6 +15,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   final _db = Supabase.instance.client;
   bool _loading = true;
   bool _saving = false;
+  bool _loaded = false;
 
   final _fares = <String, Map<String, TextEditingController>>{};
 
@@ -103,14 +104,41 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
           TextEditingController(text: '${row['id'] ?? ''}'),
         ]);
       }
+      _loaded = true;
     } catch (_) {
-      // Keep defaults
+      _loaded = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível carregar as tarifas. Atualiza bloqueado para '
+              'evitar apagar os valores atuais.',
+            ),
+            backgroundColor: Color(0xFFCF6679),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _save() async {
+    if (!_loaded) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'As tarifas ainda não foram carregadas — não é possível '
+              'guardar. Atualize a página e tente novamente.',
+            ),
+            backgroundColor: Color(0xFFCF6679),
+          ),
+        );
+      }
+      return;
+    }
     setState(() => _saving = true);
     try {
       for (final cat in _categories) {
