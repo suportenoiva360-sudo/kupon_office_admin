@@ -24,6 +24,12 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
   List<Map<String, dynamic>> _trips = [];
   int _selectedTab = 0;
 
+  /// `drivers.documents_url` (mapa `{tipo: url}` gravado no registo).
+  Map<String, dynamic>? get _docUrls {
+    final raw = _driver?['documents_url'];
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -474,7 +480,11 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
                 ),
               ),
               const SizedBox(height: 4),
-              DriverDocumentsSection(driverId: driverId, userId: userId),
+              DriverDocumentsSection(
+                driverId: driverId,
+                userId: userId,
+                docUrls: _docUrls,
+              ),
             ],
           ),
         ),
@@ -571,7 +581,11 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
             ),
           ),
           const SizedBox(height: 12),
-          DriverDocumentsSection(driverId: driverId, userId: userId),
+          DriverDocumentsSection(
+            driverId: driverId,
+            userId: userId,
+            docUrls: _docUrls,
+          ),
           const SizedBox(height: 8),
           Text(
             'A revisão manual garante que os documentos estão legíveis e '

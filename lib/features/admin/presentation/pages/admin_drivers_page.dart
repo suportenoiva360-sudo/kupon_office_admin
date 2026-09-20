@@ -1005,8 +1005,16 @@ class _AdminDriversPageState extends State<AdminDriversPage>
                   const SizedBox(width: 12),
                 ],
                 _buildActionIcon(
+                  icon: Icons.folder_open_rounded,
+                  color: const Color(0xFF7B8CDE),
+                  tooltip: 'Ver documentos',
+                  onTap: () => _openDocuments(d),
+                ),
+                const SizedBox(width: 12),
+                _buildActionIcon(
                   icon: Icons.edit_rounded,
                   color: AppTheme.primaryContainer,
+                  tooltip: 'Editar perfil',
                   onTap: () => _openEditDialog(d),
                 ),
               ],
@@ -1304,6 +1312,28 @@ class _AdminDriversPageState extends State<AdminDriversPage>
                   const SizedBox(height: 10),
                   Row(
                     children: [
+                      SizedBox(
+                        width: 44,
+                        child: GestureDetector(
+                          onTap: () => _openDocuments(d),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFF7B8CDE),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.folder_open_rounded,
+                              size: 14,
+                              color: Color(0xFF7B8CDE),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: GestureDetector(
                           onTap: () => _openEditDialog(d),
@@ -1413,6 +1443,24 @@ class _AdminDriversPageState extends State<AdminDriversPage>
     );
   }
 
+  /// Abre os documentos enviados pelo motorista (bucket `driver-documents`).
+  Future<void> _openDocuments(Map<String, dynamic> d) {
+    final user = d['users'] as Map<String, dynamic>? ?? {};
+    return showDriverDocumentsDialog(
+      context,
+      driverId: d['id'] as String,
+      userId: user['id'] as String?,
+      driverName: user['name'] as String? ?? 'Motorista',
+      docUrls: _docUrlsOf(d),
+    );
+  }
+
+  /// `drivers.documents_url` (mapa `{tipo: url}` gravado no registo).
+  Map<String, dynamic>? _docUrlsOf(Map<String, dynamic> d) {
+    final raw = d['documents_url'];
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
   /// Opens the document review dialog before approving a pending driver.
   Future<void> _openApprovalReview(Map<String, dynamic> d) {
     final user = d['users'] as Map<String, dynamic>? ?? {};
@@ -1422,6 +1470,7 @@ class _AdminDriversPageState extends State<AdminDriversPage>
       driverId: d['id'] as String,
       userId: user['id'] as String?,
       driverName: name,
+      docUrls: _docUrlsOf(d),
       onApprove: () => _toggleApproval(d, true),
     );
   }
@@ -1467,8 +1516,9 @@ class _AdminDriversPageState extends State<AdminDriversPage>
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    String? tooltip,
   }) {
-    return MouseRegion(
+    final button = MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onTap,
@@ -1482,6 +1532,7 @@ class _AdminDriversPageState extends State<AdminDriversPage>
         ),
       ),
     );
+    return tooltip == null ? button : Tooltip(message: tooltip, child: button);
   }
 
   // ──────────────────────────────────────────────────────────────────────────

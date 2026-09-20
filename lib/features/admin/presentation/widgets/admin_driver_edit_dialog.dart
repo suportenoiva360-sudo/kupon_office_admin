@@ -413,6 +413,13 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                   _buildSectionLabel('GESTÃO DA CONTA'),
                   const SizedBox(height: 12),
                   _buildManagement(),
+                  const SizedBox(height: 12),
+                  _manageButton(
+                    icon: Icons.folder_open_rounded,
+                    label: 'Ver Documentos do Motorista',
+                    color: const Color(0xFF7B8CDE),
+                    onTap: _openDocuments,
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -481,6 +488,24 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
     );
   }
 
+  /// Abre os documentos enviados pelo motorista (bucket `driver-documents`).
+  void _openDocuments() {
+    final user = widget.driver['users'] as Map<String, dynamic>? ?? {};
+    showDriverDocumentsDialog(
+      context,
+      driverId: _driverId,
+      userId: _userId.isEmpty ? user['id'] as String? : _userId,
+      driverName: user['name'] as String? ?? 'Motorista',
+      docUrls: _docUrlsOf(widget.driver),
+    );
+  }
+
+  /// `drivers.documents_url` (mapa `{tipo: url}` gravado no registo).
+  Map<String, dynamic>? _docUrlsOf(Map<String, dynamic> d) {
+    final raw = d['documents_url'];
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
   Widget _buildManagement() {
     final isApproved = widget.driver['is_approved'] as bool? ?? false;
     final isBlocked = widget.driver['is_blocked'] == true;
@@ -506,6 +531,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                   driverId: _driverId,
                   userId: user['id'] as String?,
                   driverName: user['name'] as String? ?? 'Motorista',
+                  docUrls: _docUrlsOf(widget.driver),
                   onApprove: () => _toggleApproval(true),
                 );
               }

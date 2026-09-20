@@ -5,6 +5,25 @@ import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Bucket onde o app do motorista guarda os documentos (privado).
+const _bucket = 'driver-documents';
+
+/// Etiquetas para as chaves usadas no registo do motorista
+/// (`{user_id}/{chave}.{ext}` e `drivers.documents_url`).
+const _docLabels = <String, String>{
+  'bi_frente': 'BI Frente',
+  'bi_verso': 'BI Traseiro',
+  'driving_license': 'Carta de Condução',
+  'crlv': 'Livrete (CRLV)',
+  'vehicle_insurance': 'Seguro do Veículo',
+  'vehicle_inspection': 'Inspeção da Viatura',
+  // chave antiga, ainda presente em ficheiros enviados antes do alinhamento
+  'vehicle_photo': 'Foto da Viatura',
+  'background_check': 'Verificação de Antecedentes',
+  'selfie': 'Foto',
+  'profile_photo': 'Foto de Perfil',
+};
+
 /// Um ficheiro de documento do motorista guardado no Storage.
 class DriverDocFile {
   final String name;
@@ -34,6 +53,13 @@ class DriverDocFile {
 
   /// Etiqueta amigável a partir do nome do ficheiro.
   String get label {
+    final base = name.contains('.')
+        ? name.substring(0, name.lastIndexOf('.'))
+        : name;
+    final key = base.toLowerCase();
+    final known = _docLabels[key];
+    if (known != null) return known;
+
     final lower = name.toLowerCase();
     if (lower.contains('bi') &&
         (lower.contains('frente') || lower.contains('front'))) {
@@ -53,7 +79,16 @@ class DriverDocFile {
       return 'Livrete (CRLV)';
     }
     if (lower.contains('insurance') || lower.contains('seguro')) {
-      return 'Seguro';
+      return 'Seguro do Veículo';
+    }
+    if (lower.contains('inspection') ||
+        lower.contains('inspecao') ||
+        lower.contains('inspeção') ||
+        lower.contains('vistoria')) {
+      return 'Inspeção da Viatura';
+    }
+    if (lower.contains('background')) {
+      return 'Verificação de Antecedentes';
     }
     if (lower.contains('vehicle') ||
         lower.contains('viatura') ||
@@ -70,30 +105,72 @@ class DriverDocFile {
   }
 }
 
-/// Lista os documentos do motorista no bucket `driver-documents`.
-/// Estrutura: uma pasta por motorista (`{driver_id}/` ou `{user_id}/`)
-/// com os ficheiros dentro (ex.: `crlv.png`, `driving_license.png`).
-/// Devolve [] quando não há ficheiros ou sem permissão — nunca mock.
-Future<List<DriverDocFile>> fetchDriverDocuments({
+/// Resultado da leitura dos documentos: lista + erro legível (quando falhou).
+class DriverDocsResult {
+  final List<DriverDocFile> docs;
+  final String? error;
+
+  const DriverDocsResult(this.docs, {this.error});
+
+  bool get hasError => error != null;
+}
+
+/// Lê os documentos do motorista. Duas fontes complementares:
+///  1. Bucket `driver-documents` — pasta `{driver_id}/` ou `{user_id}/`
+///     (ex.: `crlv.png`, `bi_frente.jpg`).
+///  2. `drivers.documents_url` — mapa `{tipo: url pública}` gravado pelo app do
+///     motorista no registo, usado quando não é possível listar a pasta.
+/// Nunca devolve dados simulados; falhas são devolvidas em [DriverDocsResult.error].
+Future<DriverDocsResult> loadDriverDocuments({
   required String driverId,
   String? userId,
+  Map<String, dynamic>? docUrls,
 }) async {
-  final bucket =
-      Supabase.instance.client.storage.from('driver-documents');
+  final bucket = Supabase.instance.client.storage.from(_bucket);
   final prefixes = <String>[driverId];
   if (userId != null && userId.isNotEmpty && userId != driverId) {
     prefixes.add(userId);
   }
+
   final seen = <String>{};
   final out = <DriverDocFile>[];
+  final errors = <String>[];
+
   for (final prefix in prefixes) {
     try {
       await _collect(bucket, prefix, 0, seen, out);
-    } catch (_) {
-      // Sem acesso ou pasta inexistente: ignora este prefixo.
+    } catch (e) {
+      errors.add(_friendlyError(e));
     }
   }
-  return out;
+
+  final fromDb = await _collectDocUrls(bucket, docUrls, seen);
+  out.addAll(fromDb.docs);
+  errors.addAll(fromDb.errors);
+
+  out.sort((a, b) {
+    final byRank = _docRank(a.name).compareTo(_docRank(b.name));
+    return byRank != 0 ? byRank : a.name.compareTo(b.name);
+  });
+
+  if (out.isEmpty && errors.isNotEmpty) {
+    return DriverDocsResult(const <DriverDocFile>[], error: errors.first);
+  }
+  return DriverDocsResult(out);
+}
+
+/// Compatibilidade: lista simples (usada pela verificação de obrigatórios).
+Future<List<DriverDocFile>> fetchDriverDocuments({
+  required String driverId,
+  String? userId,
+  Map<String, dynamic>? docUrls,
+}) async {
+  final res = await loadDriverDocuments(
+    driverId: driverId,
+    userId: userId,
+    docUrls: docUrls,
+  );
+  return res.docs;
 }
 
 Future<void> _collect(
@@ -108,7 +185,7 @@ Future<void> _collect(
     final name = e.name;
     if (name.isEmpty || name == '.emptyFolderPlaceholder') continue;
     final fullPath = '$dir/$name';
-    if (e.id == null) {
+    if (_isFolder(e)) {
       // Subpasta: desce um nível.
       if (depth < 2) await _collect(bucket, fullPath, depth + 1, seen, out);
       continue;
@@ -123,14 +200,95 @@ Future<void> _collect(
   }
 }
 
+/// A API devolve pastas sem `id` nem `metadata`; ficheiros trazem sempre
+/// metadata (tamanho/mimetype) e uma extensão. Testar os dois campos evita
+/// tratar um ficheiro como pasta quando o `id` não vem na resposta.
+bool _isFolder(FileObject e) {
+  if (e.id != null || e.metadata != null) return false;
+  return !e.name.contains('.');
+}
+
+Future<({List<DriverDocFile> docs, List<String> errors})> _collectDocUrls(
+  StorageFileApi bucket,
+  Map<String, dynamic>? docUrls,
+  Set<String> seen,
+) async {
+  final docs = <DriverDocFile>[];
+  final errors = <String>[];
+  if (docUrls == null || docUrls.isEmpty) {
+    return (docs: docs, errors: errors);
+  }
+
+  for (final entry in docUrls.entries) {
+    final raw = entry.value?.toString() ?? '';
+    if (raw.isEmpty) continue;
+    final path = _objectPathFromUrl(raw);
+    if (path == null || path.isEmpty || !seen.add(path)) continue;
+    final name = path.split('/').last;
+    try {
+      final url = await bucket.createSignedUrl(path, 3600);
+      docs.add(DriverDocFile(name: name, path: path, url: url));
+    } catch (e) {
+      errors.add(_friendlyError(e));
+    }
+  }
+  return (docs: docs, errors: errors);
+}
+
+/// `.../object/(public|sign)/driver-documents/{uid}/{ficheiro}` -> `{uid}/{ficheiro}`
+String? _objectPathFromUrl(String url) {
+  final segments = Uri.tryParse(url)?.pathSegments;
+  if (segments == null) return null;
+  final index = segments.indexOf(_bucket);
+  if (index < 0 || index + 1 >= segments.length) return null;
+  return segments.sublist(index + 1).join('/');
+}
+
+String _friendlyError(Object e) {
+  if (e is StorageException && e.statusCode == '403') {
+    return 'Sem permissão para ler os documentos deste motorista.';
+  }
+  if (e is StorageException && e.statusCode == '400') {
+    return 'Não foi possível ler os documentos deste motorista.';
+  }
+  return 'Não foi possível ler os documentos: $e';
+}
+
+int _docRank(String name) {
+  final l = name.toLowerCase();
+  if (l.contains('bi') && (l.contains('frente') || l.contains('front'))) {
+    return 0;
+  }
+  if (l.contains('bi') &&
+      (l.contains('verso') ||
+          l.contains('traseiro') ||
+          l.contains('tras') ||
+          l.contains('back'))) {
+    return 1;
+  }
+  if (l.contains('driving_license') || l.contains('carta')) return 2;
+  if (l.contains('crlv') || l.contains('livrete')) return 3;
+  if (l.contains('insurance') || l.contains('seguro')) return 4;
+  if (l.contains('inspection') ||
+      l.contains('inspecao') ||
+      l.contains('inspeção') ||
+      l.contains('vistoria')) {
+    return 5;
+  }
+  if (l.contains('background')) return 6;
+  return 10;
+}
+
 /// Verifica os documentos obrigatórios para aprovação (BI frente + verso).
 Future<({bool hasBiFront, bool hasBiBack})> checkMandatoryDocs({
   required String driverId,
   String? userId,
+  Map<String, dynamic>? docUrls,
 }) async {
   final docs = await fetchDriverDocuments(
     driverId: driverId,
     userId: userId,
+    docUrls: docUrls,
   );
   var front = false;
   var back = false;
@@ -152,21 +310,23 @@ Future<({bool hasBiFront, bool hasBiBack})> checkMandatoryDocs({
 class DriverDocumentsSection extends StatefulWidget {
   final String driverId;
   final String? userId;
+  final Map<String, dynamic>? docUrls;
 
   const DriverDocumentsSection({
     super.key,
     required this.driverId,
     this.userId,
+    this.docUrls,
   });
 
   @override
-  State<DriverDocumentsSection> createState() =>
-      _DriverDocumentsSectionState();
+  State<DriverDocumentsSection> createState() => _DriverDocumentsSectionState();
 }
 
 class _DriverDocumentsSectionState extends State<DriverDocumentsSection> {
   bool _loading = true;
   List<DriverDocFile> _docs = [];
+  String? _error;
 
   @override
   void initState() {
@@ -175,16 +335,23 @@ class _DriverDocumentsSectionState extends State<DriverDocumentsSection> {
   }
 
   Future<void> _load() async {
-    final docs = await fetchDriverDocuments(
-      driverId: widget.driverId,
-      userId: widget.userId,
-    );
     if (mounted) {
       setState(() {
-        _docs = docs;
-        _loading = false;
+        _loading = true;
+        _error = null;
       });
     }
+    final res = await loadDriverDocuments(
+      driverId: widget.driverId,
+      userId: widget.userId,
+      docUrls: widget.docUrls,
+    );
+    if (!mounted) return;
+    setState(() {
+      _docs = res.docs;
+      _error = res.error;
+      _loading = false;
+    });
   }
 
   @override
@@ -195,28 +362,18 @@ class _DriverDocumentsSectionState extends State<DriverDocumentsSection> {
         child: Center(child: KuponLoader(size: 56)),
       );
     }
+    if (_error != null) {
+      return _messageBox(
+        icon: Icons.error_outline_rounded,
+        color: const Color(0xFFCF6679),
+        text: _error!,
+      );
+    }
     if (_docs.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Icon(
-              Icons.folder_off_outlined,
-              size: 18,
-              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Nenhum documento enviado',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
-                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
-                ),
-              ),
-            ),
-          ],
-        ),
+      return _messageBox(
+        icon: Icons.folder_off_outlined,
+        color: AppTheme.onSurfaceVariant,
+        text: 'Nenhum documento enviado por este motorista.',
       );
     }
     return GridView.builder(
@@ -233,6 +390,42 @@ class _DriverDocumentsSectionState extends State<DriverDocumentsSection> {
       itemBuilder: (context, i) => _DocThumb(
         doc: _docs[i],
         onTap: () => showDriverDocViewer(context, _docs[i]),
+      ),
+    );
+  }
+
+  Widget _messageBox({
+    required IconData icon,
+    required Color color,
+    required String text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color.withValues(alpha: 0.8)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12,
+                color: color.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: _load,
+            child: Text(
+              'Tentar novamente',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.primaryContainer,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -408,7 +601,10 @@ Widget _viewerError(BuildContext context, DriverDocFile doc) {
         ),
         const SizedBox(height: 12),
         Text(
-          'Pré-visualização indisponível',
+          doc.isPdf
+              ? 'Use "Abrir no navegador" para ver este PDF.'
+              : 'Pré-visualização indisponível',
+          textAlign: TextAlign.center,
           style: GoogleFonts.spaceGrotesk(
             fontSize: 13,
             color: AppTheme.onSurfaceVariant,
@@ -425,6 +621,97 @@ Future<void> _openExternal(String url) async {
   await launchUrl(uri, mode: LaunchMode.externalApplication);
 }
 
+/// Diálogo autónomo com os documentos do motorista — usado na lista de
+/// motoristas (ação "Documentos") para não obrigar a abrir o perfil.
+Future<void> showDriverDocumentsDialog(
+  BuildContext context, {
+  required String driverId,
+  String? userId,
+  String? driverName,
+  Map<String, dynamic>? docUrls,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      backgroundColor: AppTheme.surfaceContainerLow,
+      insetPadding: const EdgeInsets.all(24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640, maxHeight: 620),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 4),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.folder_open_rounded,
+                    color: AppTheme.primaryContainer,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Documentos do motorista',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.onSurface,
+                          ),
+                        ),
+                        if (driverName != null && driverName.isNotEmpty)
+                          Text(
+                            driverName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
+                              color: AppTheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    color: AppTheme.onSurfaceVariant,
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: DriverDocumentsSection(
+                  driverId: driverId,
+                  userId: userId,
+                  docUrls: docUrls,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  'Fechar',
+                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// Diálogo de revisão antes de aprovar: mostra os documentos do
 /// motorista e só depois permite aprovar.
 Future<void> showDriverApprovalReview(
@@ -433,6 +720,7 @@ Future<void> showDriverApprovalReview(
   required String? userId,
   required String driverName,
   required Future<void> Function() onApprove,
+  Map<String, dynamic>? docUrls,
 }) {
   return showDialog(
     context: context,
@@ -441,6 +729,7 @@ Future<void> showDriverApprovalReview(
       userId: userId,
       driverName: driverName,
       onApprove: onApprove,
+      docUrls: docUrls,
     ),
   );
 }
@@ -450,12 +739,14 @@ class _ApprovalReviewDialog extends StatefulWidget {
   final String? userId;
   final String driverName;
   final Future<void> Function() onApprove;
+  final Map<String, dynamic>? docUrls;
 
   const _ApprovalReviewDialog({
     required this.driverId,
     required this.userId,
     required this.driverName,
     required this.onApprove,
+    this.docUrls,
   });
 
   @override
@@ -478,6 +769,7 @@ class _ApprovalReviewDialogState extends State<_ApprovalReviewDialog> {
     final res = await checkMandatoryDocs(
       driverId: widget.driverId,
       userId: widget.userId,
+      docUrls: widget.docUrls,
     );
     if (mounted) {
       setState(() {
@@ -506,9 +798,9 @@ class _ApprovalReviewDialogState extends State<_ApprovalReviewDialog> {
               padding: const EdgeInsets.fromLTRB(20, 16, 12, 4),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.pending_actions_rounded,
-                    color: const Color(0xFFF5C842),
+                    color: Color(0xFFF5C842),
                     size: 24,
                   ),
                   const SizedBox(width: 10),
@@ -594,6 +886,7 @@ class _ApprovalReviewDialogState extends State<_ApprovalReviewDialog> {
                     DriverDocumentsSection(
                       driverId: widget.driverId,
                       userId: widget.userId,
+                      docUrls: widget.docUrls,
                     ),
                   ],
                 ),
@@ -620,8 +913,9 @@ class _ApprovalReviewDialogState extends State<_ApprovalReviewDialog> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton.icon(
-                      onPressed:
-                          (_saving || _checkingDocs || !_docsOk) ? null : _approve,
+                      onPressed: (_saving || _checkingDocs || !_docsOk)
+                          ? null
+                          : _approve,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4CAF50),
                         foregroundColor: Colors.black,
