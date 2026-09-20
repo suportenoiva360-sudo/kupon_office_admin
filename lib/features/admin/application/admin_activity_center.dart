@@ -24,8 +24,12 @@ class AdminActivityItem {
   });
 
   factory AdminActivityItem.fromSos(Map<String, dynamic> row) {
-    final name = row['driver_name'] as String? ?? 'Motorista';
-    final msg = (row['message'] as String? ?? '').replaceAll('\n', ' ');
+    // Eventos realtime trazem só as colunas cruas (sem o join `drivers`),
+    // por isso o nome e o endereço podem faltar — usamos fallbacks.
+    final driver = (row['drivers'] as Map?) ?? const {};
+    final user = (driver['users'] as Map?) ?? const {};
+    final name = user['name'] as String? ?? 'Motorista';
+    final msg = (row['address'] as String? ?? '').replaceAll('\n', ' ');
     return AdminActivityItem(
       id: 'sos:${row['id']}',
       kind: 'sos',
@@ -132,7 +136,7 @@ class AdminActivityCenter extends ChangeNotifier {
     try {
       final rows = await _client
           .from('sos_alerts')
-          .select('id,driver_name,message,created_at')
+          .select('id,address,created_at,drivers(users(name))')
           .eq('status', 'active')
           .order('created_at', ascending: false)
           .limit(_limit);
