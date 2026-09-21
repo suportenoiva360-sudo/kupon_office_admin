@@ -36,7 +36,7 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 5, vsync: this);
+    _tabCtrl = TabController(length: 6, vsync: this);
     _tabCtrl.addListener(() {
       if (mounted) setState(() {});
     });
