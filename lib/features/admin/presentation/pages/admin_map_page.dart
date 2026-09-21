@@ -209,8 +209,7 @@ class _AdminMapPageState extends State<AdminMapPage>
           )
           .eq('is_online', true)
           .eq('is_approved', true)
-          .not('current_lat', 'is', null)
-          .not('current_lng', 'is', null);
+          .eq('is_blocked', false);
 
       if (!mounted) return;
       final existingMap = {for (final d in _drivers) d.id: d};
@@ -220,9 +219,25 @@ class _AdminMapPageState extends State<AdminMapPage>
         final id = d['id'] as String;
         final lat = (d['current_lat'] as num?)?.toDouble();
         final lng = (d['current_lng'] as num?)?.toDouble();
-        if (lat == null || lng == null) continue;
 
-        final newPos = LatLng(lat, lng);
+        // Motorista online sem coordenadas (GPS não reportado pela app do
+        // motorista): em vez de o esconder do mapa, posiciona-o no centro da
+        // sua província e marca-o como "sem GPS".
+        final bool hasGps = lat != null && lng != null;
+        final LatLng newPos;
+        if (hasGps) {
+          newPos = LatLng(lat, lng);
+        } else {
+          final fallbackCount = updatedList
+              .where(
+                (m) =>
+                    !m.hasGps && m.provinceId == (d['province_id'] as String?),
+              )
+              .length;
+          final fallback = _provinceFallback(d, fallbackCount);
+          if (fallback == null) continue; // sem província conhecida: nada a mostrar
+          newPos = fallback;
+        }
         final prev = existingMap[id];
         double heading = prev?.heading ?? 0.0;
 
@@ -289,6 +304,7 @@ class _AdminMapPageState extends State<AdminMapPage>
           totalTrips: (d['total_trips'] as int?) ?? 0,
           position: newPos,
           heading: heading,
+          hasGps: hasGps,
         );
         updatedList.add(marker);
       }
@@ -306,6 +322,43 @@ class _AdminMapPageState extends State<AdminMapPage>
     } catch (e) {
       if (mounted && !silent) setState(() => _loading = false);
     }
+  }
+
+  /// Posição de recurso para motoristas online sem coordenadas: centro da
+  /// província registada, com um pequeno deslocamento por motorista na mesma
+  /// província para evitar marcadores sobrepostos.
+  LatLng? _provinceFallback(Map<String, dynamic> d, int sameProvinceCount) {
+    final provId = d['province_id'] as String?;
+    final provMap = d['provinces'] as Map<String, dynamic>?;
+    final code = ((provMap?['code'] as String?) ?? _provinceIdToCode[provId])
+        ?.toUpperCase();
+    final name = (provMap?['name'] as String?) ?? _provinceIdToName[provId];
+
+    Province? prov;
+    if (code != null && code.isNotEmpty) {
+      for (final p in kProvinces) {
+        if (p.code.toUpperCase() == code) {
+          prov = p;
+          break;
+        }
+      }
+    }
+    if (prov == null && name != null && name.isNotEmpty) {
+      for (final p in kProvinces) {
+        if (p.name.toLowerCase() == name.toLowerCase()) {
+          prov = p;
+          break;
+        }
+      }
+    }
+
+    final cLat = prov?.centerLat;
+    final cLng = prov?.centerLng;
+    if (cLat == null || cLng == null) return null;
+
+    // Desloca ~350 m para cada motorista sem GPS já colocado na mesma província.
+    final offset = sameProvinceCount * 0.0032;
+    return LatLng(cLat + offset, cLng + offset * 0.6);
   }
 
   /// Loads the event log from real data: recent trips + recent SOS alerts.
@@ -551,15 +604,16 @@ class _AdminMapPageState extends State<AdminMapPage>
             final id = rec['id'] as String?;
             if (id == null) return;
 
-            final lat = (rec['current_lat'] as num?)?.toDouble();
-            final lng = (rec['current_lng'] as num?)?.toDouble();
-            final isOnline = rec['is_online'] as bool?;
-            final isApproved = rec['is_approved'] as bool?;
+      final lat = (rec['current_lat'] as num?)?.toDouble();
+      final lng = (rec['current_lng'] as num?)?.toDouble();
+      final isOnline = rec['is_online'] as bool?;
+      final isApproved = rec['is_approved'] as bool?;
+      final isBlocked = rec['is_blocked'] as bool?;
 
-            final idx = _drivers.indexWhere((d) => d.id == id);
+      final idx = _drivers.indexWhere((d) => d.id == id);
 
-            // If explicitly marked offline or unapproved
-            if (isOnline == false || isApproved == false) {
+      // If explicitly marked offline, unapproved or blocked
+      if (isOnline == false || isApproved == false || isBlocked == true) {
               if (idx != -1) {
                 final name = _drivers[idx].name;
                 setState(() {
@@ -596,12 +650,13 @@ class _AdminMapPageState extends State<AdminMapPage>
                   rating: (rec['rating'] as num?)?.toDouble() ?? prev.rating,
                   category: (rec['category'] as String?) ?? prev.category,
                   totalTrips: (rec['total_trips'] as int?) ?? prev.totalTrips,
+                  hasGps: true,
                 );
                 setState(() {
                   _drivers[idx] = updated;
                   if (_selectedDriver?.id == id) _selectedDriver = updated;
                 });
-              } else if (isOnline != false && isApproved != false) {
+              } else if (isOnline != false && isApproved != false && isBlocked != true) {
                 final name = (rec['full_name'] as String?) ?? 'Motorista';
                 final marker = _DriverMarker(
                   id: id,
@@ -865,9 +920,10 @@ class _AdminMapPageState extends State<AdminMapPage>
     return _filtered.map((d) {
       final isSelected = _selectedDriver?.id == d.id;
       final isMoto = d.category == 'moto';
+      final hasGps = d.hasGps;
       final markerSize = isSelected ? 62.0 : (isMoto ? 42.0 : 46.0);
       final assetSize = isSelected ? 44.0 : (isMoto ? 28.0 : 32.0);
-      final color = _markerColor(d.category);
+      final color = hasGps ? _markerColor(d.category) : AppTheme.onSurfaceVariant;
 
       return Marker(
         point: d.position,
@@ -904,7 +960,9 @@ class _AdminMapPageState extends State<AdminMapPage>
                     height: isSelected ? 48.0 : (isMoto ? 34.0 : 36.0),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF14171A).withValues(alpha: 0.85),
+                      color: const Color(0xFF14171A).withValues(
+                        alpha: hasGps ? 0.85 : 0.55,
+                      ),
                       border: Border.all(
                         color: isSelected
                             ? Colors.white
@@ -930,25 +988,28 @@ class _AdminMapPageState extends State<AdminMapPage>
                   // Rotated topdown vehicle image asset
                   Transform.rotate(
                     angle: d.heading * (math.pi / 180.0),
-                    child: SizedBox(
-                      width: assetSize,
-                      height: assetSize,
-                      child: Image.asset(
-                        _categoryMarkerAsset(d.category),
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Icon(
-                              _categoryIcon(d.category),
-                              color: Colors.white,
-                              size: isSelected ? 22 : 16,
-                            ),
-                          );
-                        },
+                    child: Opacity(
+                      opacity: hasGps ? 1.0 : 0.55,
+                      child: SizedBox(
+                        width: assetSize,
+                        height: assetSize,
+                        child: Image.asset(
+                          _categoryMarkerAsset(d.category),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(
+                                _categoryIcon(d.category),
+                                color: Colors.white,
+                                size: isSelected ? 22 : 16,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
-                  // Online green pulse dot
+                  // Online green pulse dot / GPS-off indicator
                   Positioned(
                     top: isSelected ? 6 : 4,
                     right: isSelected ? 6 : 4,
@@ -957,7 +1018,9 @@ class _AdminMapPageState extends State<AdminMapPage>
                       height: isSelected ? 8 : 7,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF00E676),
+                        color: hasGps
+                            ? const Color(0xFF00E676)
+                            : AppTheme.onSurfaceVariant,
                         border: Border.all(color: Colors.black, width: 1.2),
                       ),
                     ),
@@ -1471,7 +1534,8 @@ class _AdminMapPageState extends State<AdminMapPage>
                       const SizedBox(height: 16),
                       _buildStatRow(
                         label: 'Motoristas Ativos',
-                        value: '${_drivers.length}',
+                        value:
+                            '${_drivers.length} · ${_drivers.where((d) => !d.hasGps).length} sem GPS',
                         valueColor: AppTheme.primaryContainer,
                       ),
                       const SizedBox(height: 12),
@@ -2503,6 +2567,9 @@ class _DriverMarker {
   final int totalTrips;
   final LatLng position;
   final double heading;
+  /// False quando o motorista está online mas sem coordenadas reportadas —
+  /// posição aproximada no centro da província.
+  final bool hasGps;
 
   const _DriverMarker({
     required this.id,
@@ -2524,11 +2591,13 @@ class _DriverMarker {
     required this.totalTrips,
     required this.position,
     this.heading = 0.0,
+    this.hasGps = true,
   });
 
   _DriverMarker copyWith({
     LatLng? position,
     double? heading,
+    bool? hasGps,
     String? name,
     String? userId,
     String? phone,
@@ -2565,5 +2634,6 @@ class _DriverMarker {
     totalTrips: totalTrips ?? this.totalTrips,
     position: position ?? this.position,
     heading: heading ?? this.heading,
+    hasGps: hasGps ?? this.hasGps,
   );
 }

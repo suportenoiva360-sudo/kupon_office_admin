@@ -37,9 +37,7 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 6, vsync: this);
-    _tabCtrl.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _tabCtrl.addListener(_handleTabChanged);
     _load();
   }
 
@@ -106,8 +104,16 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
     }
   }
 
+  void _handleTabChanged() {
+    // O listener dispara também durante o dispose do controller; sem o guard
+    // de `mounted`, o setState era chamado sobre um Element desativado e o
+    // framework rebuiia com dependências já nulas.
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _tabCtrl.removeListener(_handleTabChanged);
     _tabCtrl.dispose();
     super.dispose();
   }
@@ -649,8 +655,9 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
         final status = (t['status'] as String? ?? 'completed').toLowerCase();
         if (_selectedStatusFilter == 'completed') return status == 'completed';
         if (_selectedStatusFilter == 'pending') return status == 'pending';
-        if (_selectedStatusFilter == 'failed')
+        if (_selectedStatusFilter == 'failed') {
           return status == 'failed' || status == 'cancelled';
+        }
         return true;
       }).toList();
     }
@@ -847,7 +854,7 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                  ],
+                            ],
                           ),
                         ),
                       ),
@@ -1340,34 +1347,41 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                 ),
                 const SizedBox(width: 10),
               ],
-              FilledButton.icon(
-                onPressed: confirmEnabled ? onConfirm : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF88),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+              // `mainAxisSize: min` + filhos flexíveis não naturais (o spinner
+              // no busy-state) fazem o botão receber largura infinita dentro
+              // de Row/Cartões com largura não limitada. `Flexible` com
+              // `fit: loose` delimita o botão à largura disponível da Row.
+              Flexible(
+                fit: FlexFit.loose,
+                child: FilledButton.icon(
+                  onPressed: confirmEnabled ? onConfirm : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF88),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                icon: confirmEnabled
-                    ? const Icon(Icons.check_circle_rounded, size: 16)
-                    : const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.black,
+                  icon: confirmEnabled
+                      ? const Icon(Icons.check_circle_rounded, size: 16)
+                      : const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
                         ),
-                      ),
-                label: Text(
-                  confirmLabel,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                  label: Text(
+                    confirmLabel,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -1576,16 +1590,24 @@ class _TypeConfig {
   _TypeConfig(this.label, this.color, this.icon);
 }
 
+/// O TabBar vive dentro de um SliverPersistentHeaderDelegate. Os extents têm
+/// de ser constantes e maiores que zero: durante o layout (ex. primeira frame
+/// ou resize do splitter) o delegate pode ser consultado antes de o widget
+/// estar montado, e `tabBar.preferredSize` com extents dinâmicos faz o
+/// framework lançar "Null check operator used on a null value" (gestures /
+/// scheduler library) em vez de mostrar o erro normalmente.
 class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
+  final double extent;
 
-  _SliverTabBarDelegate(this.tabBar);
+  _SliverTabBarDelegate(this.tabBar)
+      : extent = tabBar.preferredSize.height.clamp(48.0, double.infinity);
 
   @override
-  double get minExtent => tabBar.preferredSize.height;
+  double get minExtent => extent;
 
   @override
-  double get maxExtent => tabBar.preferredSize.height;
+  double get maxExtent => extent;
 
   @override
   Widget build(
@@ -1598,6 +1620,6 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return false;
+    return tabBar != oldDelegate.tabBar || extent != oldDelegate.extent;
   }
 }

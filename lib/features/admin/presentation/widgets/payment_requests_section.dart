@@ -20,7 +20,7 @@ class PaymentRequestsSection extends StatefulWidget {
 class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
   final _client = Supabase.instance.client;
   final List<Map<String, dynamic>> _requests = [];
-  final List<RealtimeChannel> _channels = [];
+  RealtimeChannel? _channel;
   bool _loading = true;
   bool _initialized = false;
   String? _busyId;
@@ -35,6 +35,7 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
     if (_initialized) return;
     _initialized = true;
     await _loadPending();
+    if (!mounted) return;
     _subscribeRealtime();
   }
 
@@ -61,27 +62,25 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
   }
 
   void _subscribeRealtime() {
-    _channels.add(
-      _client
-          .channel('admin-payments-realtime')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
-            schema: 'public',
-            table: 'payment_requests',
-            callback: (payload) {
-              if (payload.newRecord['status'] == 'pending') {
-                _loadPending();
-              }
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.update,
-            schema: 'public',
-            table: 'payment_requests',
-            callback: (_) => _loadPending(),
-          )
-          .subscribe(),
-    );
+    _channel = _client
+        .channel('admin-payments-realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'payment_requests',
+          callback: (payload) {
+            if (payload.newRecord['status'] == 'pending') {
+              _loadPending();
+            }
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'payment_requests',
+          callback: (_) => _loadPending(),
+        )
+        .subscribe();
   }
 
   Future<void> _decide(Map<String, dynamic> req, String decision) async {
@@ -123,9 +122,10 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
 
   @override
   void dispose() {
-    for (final c in _channels) {
-      c.unsubscribe();
-    }
+    // Cancelar a subscrição explicitamente (sem guardar callback pendente)
+    // garante que nenhum realtime callback acede a este State após o dispose.
+    _channel?.unsubscribe();
+    _channel = null;
     super.dispose();
   }
 
@@ -150,14 +150,11 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
         ),
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final req in _requests) ...[
-          _buildRequestCard(req),
-          const SizedBox(height: 12),
-        ],
-      ],
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      itemCount: _requests.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (_, i) => _buildRequestCard(_requests[i]),
     );
   }
 

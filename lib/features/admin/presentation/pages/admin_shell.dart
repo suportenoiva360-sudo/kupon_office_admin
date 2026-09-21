@@ -516,26 +516,34 @@ class _AdminShellState extends State<AdminShell> {
                   )
                 : ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 360),
-                    child: ListView.separated(
-                      shrinkWrap: true,
+                    // MenuAnchor exige dimensões intrínsecas (dry layout), que o
+                    // ListView (mesmo com shrinkWrap) não suporta. Column dentro
+                    // de SingleChildScrollView resolve.
+                    child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: items.length,
-                      separatorBuilder: (_, _) => const Divider(
-                        color: Color(0xFF2A2A2A),
-                        height: 1,
-                        indent: 16,
-                        endIndent: 16,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < items.length; i++) ...[
+                            if (i > 0)
+                              const Divider(
+                                color: Color(0xFF2A2A2A),
+                                height: 1,
+                                indent: 16,
+                                endIndent: 16,
+                              ),
+                            // `context` here belongs to the menu overlay, which is
+                            // the only context from which MenuController is reachable.
+                            Builder(
+                              builder: (context) => _buildActivityTile(
+                                context,
+                                items[i],
+                                unreadIds.contains(items[i].id),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      // `context` here belongs to the menu overlay, which is the
-                      // only context from which MenuController is reachable.
-                      itemBuilder: (context, i) {
-                        final item = items[i];
-                        return _buildActivityTile(
-                          context,
-                          item,
-                          unreadIds.contains(item.id),
-                        );
-                      },
                     ),
                   ),
           ),
