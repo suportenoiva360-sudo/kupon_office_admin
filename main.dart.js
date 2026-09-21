@@ -138774,7 +138774,7 @@ a0=A.b([A.q(h+" "+a5.kM(Math.abs(n))+" Kup",a6,a6,a6,a6,A.m().$3$color$fontSize$
 if(g){a2=B.aq.q(0.15)
 a3=A.D(6)
 a4=A.ar(B.aq.q(0.4),1)
-B.h.G(a0,A.b([B.bm,A.Q(A.b([A.cy(a6,A.T(a6,A.Q(A.b([B.abd,B.mz,A.q("Aprovar",a6,a6,a6,a6,A.m().$3$color$fontSize$fontWeight(B.aq,10,B.I),a6,a6,a6),A.wr(a5.CO(B.a3N,0,B.op,!1,"Pagamentos"))],a),B.x,B.q,B.a6,0),B.y,a6,a6,new A.V(a2,a6,a4,a3,a6,a6,a6,B.H),a6,a6,a6,B.nZ,a6,a6,a6),B.T,!1,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,new A.aXM(a5,a8,s,n),a6,a6,a6,a6,a6,a6,!1,B.aG)],a),B.x,B.q,B.a6,0)],a))}return A.hX(!1,o,!0,A.T(a6,A.Q(A.b([b,B.bs,d,B.ar,A.ac(a0,B.cr,B.q,B.r)],a),B.x,B.q,B.r,0),B.y,a6,a6,new A.V(B.a0,a6,e,f,c,a6,a6,B.H),a6,a6,a6,B.hM,a6,a6,a6),a6,!0,a6,a6,a6,a6,a6,a6,a6,a6,a6,new A.aXN(a5,a8),a6,a6,a6,a6,a6,a6,a6)},
+B.h.G(a0,A.b([B.bm,A.Q(A.b([A.cy(a6,A.T(a6,A.Q(A.b([B.abd,B.mz,A.q("Aprovar",a6,a6,a6,a6,A.m().$3$color$fontSize$fontWeight(B.aq,10,B.I),a6,a6,a6)],a),B.x,B.q,B.a6,0),B.y,a6,a6,new A.V(a2,a6,a4,a3,a6,a6,a6,B.H),a6,a6,a6,B.nZ,a6,a6,a6),B.T,!1,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,a6,new A.aXM(a5,a8,s,n),a6,a6,a6,a6,a6,a6,!1,B.aG)],a),B.x,B.q,B.a6,0)],a))}return A.hX(!1,o,!0,A.T(a6,A.Q(A.b([b,B.bs,d,B.ar,A.ac(a0,B.cr,B.q,B.r)],a),B.x,B.q,B.r,0),B.y,a6,a6,new A.V(B.a0,a6,e,f,c,a6,a6,B.H),a6,a6,a6,B.hM,a6,a6,a6),a6,!0,a6,a6,a6,a6,a6,a6,a6,a6,a6,new A.aXN(a5,a8),a6,a6,a6,a6,a6,a6,a6)},
 a5c(a,b){var s=null,r=A.b([B.B.q(0.3),B.aC],t.t_),q=A.ar(B.a2.q(0.5),1)
 return A.T(s,A.mJ(a!=null&&a.length!==0?A.l_(a,s,s,new A.aXo(this,b),B.dE,s,s,s):this.a5b(b)),B.y,s,s,new A.V(s,s,q,s,s,new A.jn(B.e5,B.iH,B.cz,r,s,s),s,B.aH),s,44,s,s,s,s,44)},
 a5b(a){var s=null,r=a.length!==0?B.o.a_(a,0,1).toUpperCase():"?"
@@ -138968,7 +138968,7 @@ o=A.m().$2$fontSize$fontWeight(13,B.b0)
 n=A.wr(j.a5e(B.B,j.x.length,B.a9R,"Todas"))
 m=A.wr(j.CO(B.bk,j.as,B.D5,!1,"Saques"))
 l=j.x
-return A.b([new A.wl(new A.aB(B.C2,s,k),k),A.bw1(new A.bdt(A.bwc(r,h,B.B,B.rh,3,!0,B.B,p,B.l8,B.W_,A.b([n,m,A.wr(j.a5e(B.aq,new A.aa(l,new A.aXZ(),A.X(l).i("aa<1>")).gv(0),B.d1,"Corridas")),A.wr(j.CO(B.B,j.y.length,B.jv,!1,"Top-ups")),A.wr(j.CO(B.aq,j.z.length,B.jw,!1,"Assinaturas"))],q),i,o)),!0)],q)},
+return A.b([new A.wl(new A.aB(B.C2,s,k),k),A.bw1(new A.bdt(A.bwc(r,h,B.B,B.rh,3,!0,B.B,p,B.l8,B.W_,A.b([n,m,A.wr(j.a5e(B.aq,new A.aa(l,new A.aXZ(),A.X(l).i("aa<1>")).gv(0),B.d1,"Corridas")),A.wr(j.CO(B.B,j.y.length,B.jv,!1,"Top-ups")),A.wr(j.CO(B.aq,j.z.length,B.jw,!1,"Assinaturas")),A.wr(j.CO(B.a3N,0,B.op,!1,"Pagamentos"))],q),i,o)),!0)],q)},
 $S:332}
 A.aXZ.prototype={
 $1(a){return J.c(a.h(0,"type"),"ride_payment")},
