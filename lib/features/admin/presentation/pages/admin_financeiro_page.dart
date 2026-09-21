@@ -205,6 +205,15 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                         showCountWhenZero: false,
                       ),
                     ),
+                    Tab(
+                      child: _tabLabel(
+                        icon: Icons.account_balance_wallet_rounded,
+                        text: 'Pagamentos',
+                        count: 0,
+                        badgeColor: const Color(0xFFB08A3F),
+                        showCountWhenZero: false,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -838,15 +847,6 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                    Tab(
-                      child: _tabLabel(
-                        icon: Icons.account_balance_wallet_rounded,
-                        text: 'Pagamentos',
-                        count: 0,
-                        badgeColor: const Color(0xFFB08A3F),
-                        showCountWhenZero: false,
-                      ),
-                    ),
                   ],
                           ),
                         ),
