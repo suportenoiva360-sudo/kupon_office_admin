@@ -11,6 +11,7 @@ import 'package:kupon_office_admin/features/admin/presentation/pages/admin_finan
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_suporte_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_driver_detail_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_promocoes_page.dart';
+import 'package:kupon_office_admin/features/admin/presentation/pages/admin_driver_packages_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_planos_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_sos_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_configuracoes_page.dart';
@@ -144,6 +145,16 @@ final GoRouter appRouter = GoRouter(
               path: '/planos',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: AdminPlanosPage(),
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/pacotes',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: AdminDriverPackagesPage(),
               ),
             ),
           ],

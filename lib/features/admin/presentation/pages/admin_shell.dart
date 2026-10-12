@@ -61,6 +61,11 @@ class _AdminShellState extends State<AdminShell> {
       label: 'Planos',
     ),
     _NavDestination(
+      icon: Icons.workspace_premium_outlined,
+      selectedIcon: Icons.workspace_premium_rounded,
+      label: 'Pacotes KupON',
+    ),
+    _NavDestination(
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings_rounded,
       label: 'Configurações do Sistema',
@@ -171,7 +176,7 @@ class _AdminShellState extends State<AdminShell> {
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () =>
-                      _nav.goBranch(8, initialLocation: _nav.currentIndex == 8),
+                      _nav.goBranch(9, initialLocation: _nav.currentIndex == 9),
                   child: Container(
                     height: 48,
                     width: double.infinity,
@@ -179,7 +184,7 @@ class _AdminShellState extends State<AdminShell> {
                       color: AppTheme.errorContainer,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: _nav.currentIndex == 8
+                        color: _nav.currentIndex == 9
                             ? Colors.white.withValues(alpha: 0.7)
                             : Colors.transparent,
                         width: 2,
