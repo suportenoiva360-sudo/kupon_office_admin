@@ -21,10 +21,10 @@ class AuthService {
       email: email,
       password: password,
       data: {
-        if (fullName != null) 'full_name': fullName,
-        if (phone != null) 'phone': phone,
-        if (provinceId != null) 'province_id': provinceId,
-        if (role != null) 'role': role,
+        'full_name': ?fullName,
+        'phone': ?phone,
+        'province_id': ?provinceId,
+        'role': ?role,
       },
     );
   }
