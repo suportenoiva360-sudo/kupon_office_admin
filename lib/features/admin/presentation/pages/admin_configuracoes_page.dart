@@ -20,6 +20,9 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   final _fares = <String, Map<String, TextEditingController>>{};
   // Recompensa por convite (kupon_settings.referral_reward_amount, Kz).
   final TextEditingController _referralRewardCtrl = TextEditingController();
+  // 2.4 — aviso sonoro de fim de viagem (kupon_settings).
+  final TextEditingController _rideEndAnnounceCtrl = TextEditingController();
+  final TextEditingController _rideEndRadiusCtrl = TextEditingController();
   // Última alteração de cada categoria (tariffs.updated_at).
   final _tariffUpdatedAt = <String, DateTime?>{};
   // id(uuid) de cada tarifa — mapeia row_key do histórico -> categoria.
@@ -68,6 +71,8 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       ctrl.dispose();
     }
     _referralRewardCtrl.dispose();
+    _rideEndAnnounceCtrl.dispose();
+    _rideEndRadiusCtrl.dispose();
     super.dispose();
   }
 
@@ -98,13 +103,38 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         _referralRewardCtrl.text = '500';
       }
 
+      // 2.4 — aviso sonoro de fim de viagem.
+      try {
+        final rows = await _db
+            .from('kupon_settings')
+            .select('key, value')
+            .inFilter('key', [
+              'ride_end_announcement',
+              'ride_end_announce_distance_m',
+            ]);
+        String msg =
+            'Caro KupaKamba, antes de sair, garanta que não deixou '
+            'nenhum pertence no veículo. Obrigado por escolher a KupON!';
+        String radius = '600';
+        for (final row in (rows as List)) {
+          final key = row['key'] as String?;
+          final value = row['value'];
+          if (key == 'ride_end_announcement') {
+            if (value != null) msg = '$value';
+          } else if (key == 'ride_end_announce_distance_m') {
+            radius = '$value'.trim();
+          }
+        }
+        _rideEndAnnounceCtrl.text = msg;
+        _rideEndRadiusCtrl.text = radius;
+      } catch (_) {}
+
       for (final row in (tariffRows as List)) {
         final cat = row['category'] as String?;
         if (cat == null || !_fares.containsKey(cat)) continue;
         if (row['is_active'] != true) continue;
         _tariffIds[cat] = '${row['id'] ?? ''}';
-        _tariffUpdatedAt[cat] =
-            DateTime.tryParse('${row['updated_at'] ?? ''}');
+        _tariffUpdatedAt[cat] = DateTime.tryParse('${row['updated_at'] ?? ''}');
         _fares[cat]!['base']!.text = '${row['base_fare'] ?? ''}';
         _fares[cat]!['per_km']!.text = '${row['per_km'] ?? ''}';
         _fares[cat]!['per_min']!.text = '${row['per_minute'] ?? ''}';
@@ -190,23 +220,44 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
             .eq('is_active', true)
             .select();
         if ((rows as List).isEmpty) {
-          failure.add('tarifa de $cat (0 linhas — sessão sem permissão admin?)');
+          failure.add(
+            'tarifa de $cat (0 linhas — sessão sem permissão admin?)',
+          );
         }
       }
 
       // Recompensa por convite (configurável — 1.3/3.1).
-      final rewardRows = await _db
-          .from('kupon_settings')
-          .upsert({
-            'key': 'referral_reward_amount',
-            'value': _intOf(_referralRewardCtrl),
-          }, onConflict: 'key')
-          .select();
+      final rewardRows = await _db.from('kupon_settings').upsert({
+        'key': 'referral_reward_amount',
+        'value': _intOf(_referralRewardCtrl),
+      }, onConflict: 'key').select();
       if ((rewardRows as List).isEmpty) {
         failure.add('recompensa por convite (0 linhas)');
       }
 
-      for (var i = 0; i < _windowFields.length; i += 5) {        final id = _windowFields[i + 4].text.trim();
+      // 2.4 — aviso sonoro de fim de viagem (texto + raio de accionamento).
+      final announceMsg = _rideEndAnnounceCtrl.text.trim();
+      if (announceMsg.isEmpty) {
+        failure.add('aviso de fim de viagem (mensagem vazia)');
+      } else {
+        final announceRows = await _db.from('kupon_settings').upsert({
+          'key': 'ride_end_announcement',
+          'value': announceMsg,
+        }, onConflict: 'key').select();
+        if ((announceRows as List).isEmpty) {
+          failure.add('aviso de fim de viagem (0 linhas)');
+        }
+      }
+      final announceRadiusRows = await _db.from('kupon_settings').upsert({
+        'key': 'ride_end_announce_distance_m',
+        'value': _intOf(_rideEndRadiusCtrl),
+      }, onConflict: 'key').select();
+      if ((announceRadiusRows as List).isEmpty) {
+        failure.add('raio do aviso de fim de viagem (0 linhas)');
+      }
+
+      for (var i = 0; i < _windowFields.length; i += 5) {
+        final id = _windowFields[i + 4].text.trim();
         if (id.isEmpty) continue;
         final rows = await _db
             .from('peak_windows')
@@ -228,7 +279,9 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           failure.isEmpty
               ? const SnackBar(
-                  content: Text('Configurações salvas e aplicadas com sucesso!'),
+                  content: Text(
+                    'Configurações salvas e aplicadas com sucesso!',
+                  ),
                   backgroundColor: Color(0xFF4CAF88),
                 )
               : SnackBar(
@@ -369,6 +422,14 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       ),
                       const SizedBox(height: 14),
                       _buildReferralRewardCard(),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Aviso de Fim de Viagem',
+                        'Mensagem falada (voz do telemóvel) ao motorista quando falta ~600 m; 1× por viagem (configuração ride_end_announcement / ride_end_announce_distance_m).',
+                        Icons.record_voice_over_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildRideEndAnnounceCard(),
                       const SizedBox(height: 12),
                       _buildSaveButton(),
                       const SizedBox(height: 28),
@@ -442,6 +503,94 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                     color: AppTheme.surfaceContainerHighest,
                   ),
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRideEndAnnounceCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceContainerHighest),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryContainer.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.record_voice_over_rounded,
+                  color: AppTheme.primaryContainer,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'MENSAGEM FALADA (TTS do dispositivo)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 110,
+                child: TextField(
+                  controller: _rideEndRadiusCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.onSurface,
+                  ),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    suffixText: 'm',
+                    filled: true,
+                    fillColor: AppTheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _rideEndAnnounceCtrl,
+            maxLines: 3,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.onSurface,
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Caro KupaKamba, antes de sair…',
+              hintStyle: TextStyle(color: AppTheme.onSurfaceVariant),
+              filled: true,
+              fillColor: AppTheme.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppTheme.surfaceContainerHighest),
               ),
             ),
           ),
@@ -626,7 +775,8 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     );
   }
 
-  Widget _buildFareCategoryCard(String category) {    final catLabels = {
+  Widget _buildFareCategoryCard(String category) {
+    final catLabels = {
       'moto': 'KupON Moto (Classe 2 Rodas)',
       'car_standard': 'KupON Standard (Econômico)',
       'car_comfort': 'KupON Comfort (Espaço e Ar)',
@@ -641,17 +791,15 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     final color = category == 'car_luxury'
         ? const Color(0xFFF5C842)
         : category == 'moto'
-            ? const Color(0xFF4CAF88)
-            : AppTheme.primaryContainer;
+        ? const Color(0xFF4CAF88)
+        : AppTheme.primaryContainer;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.03),
@@ -863,7 +1011,9 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                   const SizedBox(width: 8),
                   Expanded(child: _buildHourField('Fim (h)', endCtrl)),
                   const SizedBox(width: 8),
-                  Expanded(child: _buildHourField('Mult (x)', multCtrl, isMult: true)),
+                  Expanded(
+                    child: _buildHourField('Mult (x)', multCtrl, isMult: true),
+                  ),
                 ],
               ),
             ],
@@ -900,7 +1050,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
           fontSize: 10,
           color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
         fillColor: AppTheme.surfaceContainerLowest,
         filled: true,
         border: OutlineInputBorder(
@@ -936,9 +1089,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       style: GoogleFonts.spaceGrotesk(
         fontSize: 13.5,
         fontWeight: FontWeight.w800,
-        color: isMult
-            ? const Color(0xFFF5C842)
-            : const Color(0xFFE5E2E1),
+        color: isMult ? const Color(0xFFF5C842) : const Color(0xFFE5E2E1),
       ),
       decoration: InputDecoration(
         labelText: label,
@@ -946,7 +1097,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
           fontSize: 10,
           color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 10,
+        ),
         fillColor: AppTheme.surfaceContainerLowest,
         filled: true,
         border: OutlineInputBorder(
@@ -960,9 +1114,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
-            color: isMult
-                ? const Color(0xFFF5C842)
-                : AppTheme.primaryContainer,
+            color: isMult ? const Color(0xFFF5C842) : AppTheme.primaryContainer,
             width: 1.5,
           ),
         ),
@@ -1042,7 +1194,9 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       decoration: BoxDecoration(
         color: AppTheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF575757).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFF575757).withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1156,7 +1310,9 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
               )
             : const Icon(Icons.save_rounded, size: 20, color: Colors.black),
         label: Text(
-          _saving ? 'A Salvar Alterações...' : 'Salvar e Aplicar Tarifas Globais',
+          _saving
+              ? 'A Salvar Alterações...'
+              : 'Salvar e Aplicar Tarifas Globais',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 14.5,
             fontWeight: FontWeight.w800,
