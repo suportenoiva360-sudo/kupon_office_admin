@@ -54,8 +54,111 @@ class AdminActivityItem {
     );
   }
 
-  factory AdminActivityItem.fromTicket(Map<String, dynamic> row) {
-    final name = ((row['users'] as Map?) ?? const {})['name'] as String?;
+  /// Novo utilizador (registo). O payload de realtime traz a linha de users.
+factory AdminActivityItem.fromUser(Map<String, dynamic> row) {
+  final name = row['name'] as String?;
+  final role = row['role'] as String?;
+  final roleLabel = role == 'driver' ? 'Motorista' : role == 'admin' ? 'Admin' : 'Passageiro';
+  return AdminActivityItem(
+    id: 'user:${row['id']}',
+    kind: 'user',
+    title: 'Nova conta — ${name ?? 'Sem nome'}',
+    subtitle: 'Registo de $roleLabel',
+    at: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+        DateTime.now(),
+    route: '/usuarios',
+  );
+}
+
+/// Nova corrida. O payload de trips traz nomes de pickup/destino.
+factory AdminActivityItem.fromTrip(Map<String, dynamic> row) {
+  final catLabels = {
+    'moto': 'Moto',
+    'car_standard': 'Standard',
+    'car_comfort': 'Comfort',
+    'car_luxury': 'Black',
+  };
+  final catLabel =
+      catLabels[row['category']] ?? '${row['category'] ?? ''}'.replaceAll('_', ' ');
+  final from = (row['pickup_name'] as String?) ?? 'origem';
+  final to = (row['destination_name'] as String?) ?? 'destino';
+  final fare = row['fare'];
+  final fareTxt =
+      (fare == null || '$fare' == 'null') ? '' : ' · Kz $fare';
+  return AdminActivityItem(
+    id: 'trip:${row['id']}',
+    kind: 'trip',
+    title: 'Nova corrida — $catLabel',
+    subtitle: '$from → $to$fareTxt',
+    at: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+        DateTime.now(),
+    route: '/dashboard',
+  );
+}
+
+/// Pedido de pagamento na carteira (recarga ou saque de passageiro).
+factory AdminActivityItem.fromPayment(Map<String, dynamic> row) {
+  final direction =
+      row['direction'] == 'recarga' ? 'Pedido de recarga' : 'Pedido de saque';
+  final methodTxt =
+      '${row['method'] ?? ''}'.replaceAll('mobile_money', 'mobile money');
+  return AdminActivityItem(
+    id: 'payment:${row['id']}',
+    kind: 'payment',
+    title: '$direction — Kz ${row['amount'] ?? '?'}',
+    subtitle: 'Método: $methodTxt',
+    at: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+        DateTime.now(),
+    route: '/financeiro',
+  );
+}
+
+/// Pedido de saque de motorista.
+factory AdminActivityItem.fromWithdrawal(Map<String, dynamic> row) {
+  return AdminActivityItem(
+    id: 'withdrawal:${row['id']}',
+    kind: 'withdrawal',
+    title: 'Saque de motorista — Kz ${row['amount'] ?? '?'}',
+    subtitle:
+        'Método: ${row['method'] ?? ''} · conta ${row['account'] ?? ''}',
+    at: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+        DateTime.now(),
+    route: '/financeiro',
+  );
+}
+
+/// Nova resposta de utilizador num ticket de suporte.
+factory AdminActivityItem.fromReply(Map<String, dynamic> row) {
+  String msg = (row['message'] as String? ?? '').trim();
+  if (msg.length > 60) msg = '${msg.substring(0, 57)}...';
+  msg = msg.replaceAll('\n', ' ');
+  return AdminActivityItem(
+    id: 'reply:${row['id']}',
+    kind: 'reply',
+    title: 'Nova mensagem de suporte',
+    subtitle: msg.isEmpty ? 'Ticket aberto tem resposta' : msg,
+    at: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+        DateTime.now(),
+    route: '/suporte',
+  );
+}
+
+/// Versão com título/subtítulo substituídos (enriquecimento de nome).
+AdminActivityItem withText({
+  String? title,
+  String? subtitle,
+}) {
+  return AdminActivityItem(
+    id: id,
+    kind: kind,
+    title: title ?? this.title,
+    subtitle: subtitle ?? this.subtitle,
+    at: at,
+    route: route,
+  );
+}
+
+factory AdminActivityItem.fromTicket(Map<String, dynamic> row) {    final name = ((row['users'] as Map?) ?? const {})['name'] as String?;
     return AdminActivityItem(
       id: 'ticket:${row['id']}',
       kind: 'ticket',
@@ -124,6 +227,11 @@ class AdminActivityCenter extends ChangeNotifier {
     await _loadSos(failed);
     await _loadDrivers(failed);
     await _loadTickets(failed);
+    await _loadUsers(failed);
+    await _loadTrips(failed);
+    await _loadPayments(failed);
+    await _loadWithdrawals(failed);
+    await _loadReplies(failed);
 
     _loading = false;
     _error = failed.isEmpty
@@ -214,10 +322,217 @@ class AdminActivityCenter extends ChangeNotifier {
           )
           .subscribe(),
     );
+    // ---- Eventos "tudo o que acontece" ----
+    _channels.add(
+      _client
+          .channel('admin-center-users')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'users',
+            callback: (payload) =>
+                _offer(AdminActivityItem.fromUser(payload.newRecord), live: true),
+          )
+          .subscribe(),
+    );
+    _channels.add(
+      _client
+          .channel('admin-center-trips')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'trips',
+            callback: (payload) =>
+                _offer(AdminActivityItem.fromTrip(payload.newRecord), live: true),
+          )
+          .subscribe(),
+    );
+    _channels.add(
+      _client
+          .channel('admin-center-payments')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'payment_requests',
+            callback: (payload) {
+              final item = AdminActivityItem.fromPayment(payload.newRecord);
+              _offer(item, live: true);
+              _enrichUserName('payment:${payload.newRecord['id']}',
+                  '${payload.newRecord['user_id'] ?? ''}');
+            },
+          )
+          .subscribe(),
+    );
+    _channels.add(
+      _client
+          .channel('admin-center-withdrawals')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'withdrawals',
+            callback: (payload) {
+              final item =
+                  AdminActivityItem.fromWithdrawal(payload.newRecord);
+              _offer(item, live: true);
+              _enrichDriverName('withdrawal:${payload.newRecord['id']}',
+                  '${payload.newRecord['driver_id'] ?? ''}');
+            },
+          )
+          .subscribe(),
+    );
+    _channels.add(
+      _client
+          .channel('admin-center-replies')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'support_replies',
+            callback: (payload) =>
+                _offer(AdminActivityItem.fromReply(payload.newRecord), live: true),
+          )
+          .subscribe(),
+    );
   }
 
-  void _onSosChange(PostgresChangePayload payload) {
-    final row = payload.newRecord;
+  /// Backlog: contas registadas nas últimas 24 h (feed abre com contexto).
+  Future<void> _loadUsers(List<String> failed) async {
+    try {
+      final since =
+          DateTime.now().toUtc().subtract(const Duration(hours: 24));
+      final rows = await _client
+          .from('users')
+          .select('id,name,role,created_at')
+          .gte('created_at', since.toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(20);
+      for (final row in rows) {
+        _add(AdminActivityItem.fromUser(Map<String, dynamic>.from(row)));
+      }
+    } catch (_) {
+      failed.add('contas');
+    }
+  }
+
+  /// Backlog: corridas de hoje.
+  Future<void> _loadTrips(List<String> failed) async {
+    try {
+      final since = DateTime.now().toUtc().subtract(const Duration(hours: 24));
+      final rows = await _client
+          .from('trips')
+          .select('id,category,pickup_name,destination_name,fare,created_at'
+              ',status')
+          .gte('created_at', since.toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(20);
+      for (final row in rows) {
+        _add(AdminActivityItem.fromTrip(Map<String, dynamic>.from(row)));
+      }
+    } catch (_) {
+      failed.add('corridas');
+    }
+  }
+
+  /// Backlog: pedidos de pagamento ainda pendentes.
+  Future<void> _loadPayments(List<String> failed) async {
+    try {
+      final rows = await _client
+          .from('payment_requests')
+          .select('id,user_id,direction,amount,method,created_at')
+          .eq('status', 'pending')
+          .order('created_at', ascending: false)
+          .limit(20);
+      for (final row in rows) {
+        final item =
+            AdminActivityItem.fromPayment(Map<String, dynamic>.from(row));
+        _add(item);
+      }
+    } catch (_) {
+      failed.add('pagamentos');
+    }
+  }
+
+  /// Backlog: saques de motorista ainda pendentes.
+  Future<void> _loadWithdrawals(List<String> failed) async {
+    try {
+      final rows = await _client
+          .from('withdrawals')
+          .select('id,driver_id,amount,method,account,created_at')
+          .eq('status', 'pending')
+          .order('created_at', ascending: false)
+          .limit(20);
+      for (final row in rows) {
+        _add(AdminActivityItem.fromWithdrawal(Map<String, dynamic>.from(row)));
+      }
+    } catch (_) {
+      failed.add('saques');
+    }
+  }
+
+  /// Backlog: respostas de suporte da última hora.
+  Future<void> _loadReplies(List<String> failed) async {
+    try {
+      final since =
+          DateTime.now().toUtc().subtract(const Duration(hours: 1));
+      final rows = await _client
+          .from('support_replies')
+          .select('id,ticket_id,sender_id,message,created_at')
+          .gte('created_at', since.toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(10);
+      for (final row in rows) {
+        _add(AdminActivityItem.fromReply(Map<String, dynamic>.from(row)));
+      }
+    } catch (_) {
+      failed.add('respostas');
+    }
+  }
+
+  /// Depois do realtime chegar, resolve o NOME do utilizador (a linha cru
+  /// não tem join) e actualiza o item no feed.
+  Future<void> _enrichUserName(String itemId, String userId) async {
+    if (userId.isEmpty) return;
+    try {
+      final row = await _client
+          .from('users')
+          .select('name')
+          .eq('id', userId)
+          .maybeSingle();
+      final name = row?['name'] as String?;
+      if (name == null || name.isEmpty) return;
+      final idx = _items.indexWhere((e) => e.id == itemId);
+      if (idx < 0) return;
+      final old = _items[idx];
+      _items[idx] = old.withText(
+        title: '${old.title.split('—').first.trim()} — $name',
+        subtitle: '${old.subtitle} · $name',
+      );
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Idem para motorista (withdrawals.driver_id é id de `drivers`).
+  Future<void> _enrichDriverName(String itemId, String driverId) async {
+    if (driverId.isEmpty || driverId == 'null') return;
+    try {
+      final row = await _client
+          .from('drivers')
+          .select('id,users(name)')
+          .eq('id', driverId)
+          .maybeSingle();
+      final name = ((row?['users'] as Map?) ?? const {})['name'] as String?;
+      if (name == null || name.isEmpty) return;
+      final idx = _items.indexWhere((e) => e.id == itemId);
+      if (idx < 0) return;
+      final old = _items[idx];
+      _items[idx] = old.withText(
+        title: '${old.title.split('—').first.trim()} — $name',
+        subtitle: '${old.subtitle} · $name',
+      );
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  void _onSosChange(PostgresChangePayload payload) {    final row = payload.newRecord;
     final id = 'sos:${row['id']}';
     if (payload.eventType == PostgresChangeEvent.delete ||
         row['status'] != 'active') {

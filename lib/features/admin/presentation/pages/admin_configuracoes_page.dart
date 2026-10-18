@@ -18,6 +18,12 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   bool _loaded = false;
 
   final _fares = <String, Map<String, TextEditingController>>{};
+  // Última alteração de cada categoria (tariffs.updated_at).
+  final _tariffUpdatedAt = <String, DateTime?>{};
+  // id(uuid) de cada tarifa — mapeia row_key do histórico -> categoria.
+  final _tariffIds = <String, String>{};
+  // Histórico de auditoria (config_change_log) — últimas alterações gerais.
+  List<Map<String, dynamic>> _history = [];
 
   static const _categories = [
     'moto',
@@ -68,7 +74,8 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       final tariffRows = await _db
           .from('tariffs')
           .select(
-            'category,base_fare,per_km,per_minute,minimum_fare,commission_percentage,is_active',
+            'id,category,base_fare,per_km,per_minute,minimum_fare'
+            ',commission_percentage,is_active,updated_at',
           )
           .order('category');
 
@@ -76,6 +83,9 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         final cat = row['category'] as String?;
         if (cat == null || !_fares.containsKey(cat)) continue;
         if (row['is_active'] != true) continue;
+        _tariffIds[cat] = '${row['id'] ?? ''}';
+        _tariffUpdatedAt[cat] =
+            DateTime.tryParse('${row['updated_at'] ?? ''}');
         _fares[cat]!['base']!.text = '${row['base_fare'] ?? ''}';
         _fares[cat]!['per_km']!.text = '${row['per_km'] ?? ''}';
         _fares[cat]!['per_min']!.text = '${row['per_minute'] ?? ''}';
@@ -105,6 +115,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         ]);
       }
       _loaded = true;
+      await _loadHistory();
     } catch (_) {
       _loaded = false;
       if (mounted) {
@@ -141,36 +152,66 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     }
     setState(() => _saving = true);
     try {
+      // PATCH sem linhas devolve "sucesso" — se o RLS bloquear a escrita o
+      // Supabase não erro. Pedimos representation para PODER contar e avisar.
+      final failure = <String>[];
+
       for (final cat in _categories) {
-        await _db.from('tariffs').update({
-          'base_fare': _intOf(_fares[cat]!['base']!),
-          'per_km': _intOf(_fares[cat]!['per_km']!),
-          'per_minute': _intOf(_fares[cat]!['per_min']!),
-          'minimum_fare': _intOf(_fares[cat]!['minimum_fare']!),
-          'commission_percentage': _intOf(_fares[cat]!['commission']!),
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('category', cat).eq('is_active', true);
+        final rows = await _db
+            .from('tariffs')
+            .update({
+              'base_fare': _intOf(_fares[cat]!['base']!),
+              'per_km': _intOf(_fares[cat]!['per_km']!),
+              'per_minute': _intOf(_fares[cat]!['per_min']!),
+              'minimum_fare': _intOf(_fares[cat]!['minimum_fare']!),
+              'commission_percentage': _intOf(_fares[cat]!['commission']!),
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('category', cat)
+            .eq('is_active', true)
+            .select();
+        if ((rows as List).isEmpty) {
+          failure.add('tarifa de $cat (0 linhas — sessão sem permissão admin?)');
+        }
       }
 
       for (var i = 0; i < _windowFields.length; i += 5) {
         final id = _windowFields[i + 4].text.trim();
         if (id.isEmpty) continue;
-        await _db.from('peak_windows').update({
-          'name': _windowFields[i].text.trim(),
-          'start_hour': _intOf(_windowFields[i + 1]),
-          'end_hour': _intOf(_windowFields[i + 2]),
-          'multiplier':
-              double.tryParse(_windowFields[i + 3].text.trim()) ?? 1.0,
-        }).eq('id', id);
+        final rows = await _db
+            .from('peak_windows')
+            .update({
+              'name': _windowFields[i].text.trim(),
+              'start_hour': _intOf(_windowFields[i + 1]),
+              'end_hour': _intOf(_windowFields[i + 2]),
+              'multiplier':
+                  double.tryParse(_windowFields[i + 3].text.trim()) ?? 1.0,
+            })
+            .eq('id', id)
+            .select();
+        if ((rows as List).isEmpty) {
+          failure.add('janela "${_windowFields[i].text.trim()}" (0 linhas)');
+        }
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Configurações salvas e aplicadas com sucesso!'),
-            backgroundColor: Color(0xFF4CAF88),
-          ),
+          failure.isEmpty
+              ? const SnackBar(
+                  content: Text('Configurações salvas e aplicadas com sucesso!'),
+                  backgroundColor: Color(0xFF4CAF88),
+                )
+              : SnackBar(
+                  content: Text(
+                    'Gravação FALHOU para: ${failure.join(' · ')}. '
+                    'Verifica se tua conta tem role admin na tabela users.',
+                  ),
+                  backgroundColor: const Color(0xFFCF6679),
+                  duration: const Duration(seconds: 6),
+                ),
         );
+        // Recarrega para actualizar as datas de alteração e o histórico.
+        if (failure.isEmpty) await _loadSettings();
       }
     } catch (e) {
       if (mounted) {
@@ -184,6 +225,67 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  /// Histórico de auditoria — últimas 40 alterações da base.
+  /// Falha graciosa (tabela pode não existir numa base antiga).
+  Future<void> _loadHistory() async {
+    try {
+      final rows = await _db
+          .from('config_change_log')
+          .select('table_name,row_key,changes,changed_at')
+          .order('changed_at', ascending: false)
+          .limit(40);
+      if (!mounted) return;
+      setState(() {
+        _history = [for (final r in (rows as List)) Map.from(r as Map)];
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _history = const <Map<String, dynamic>>[];
+      });
+    }
+  }
+
+  String _fmtDate(DateTime? dt) {
+    if (dt == null) return '—';
+    final local = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        'às ${two(local.hour)}:${two(local.minute)}';
+  }
+
+  String _historyTableLabel(String table) {
+    switch (table) {
+      case 'tariffs':
+        return 'Tarifa';
+      case 'peak_windows':
+        return 'Janela de demanda';
+      case 'kupon_settings':
+        return 'Configuração';
+      case 'driver_packages':
+        return 'Pacote de motorista';
+      default:
+        return table;
+    }
+  }
+
+  /// Resumo legível das colunas alteradas: "base_fare 200 → 210".
+  String _historyChangeSummary(Map<String, dynamic> changes) {
+    final parts = <String>[];
+    for (final key in changes.keys) {
+      final pair = changes[key];
+      if (pair is List && pair.length >= 2) {
+        String fmt(dynamic v) {
+          final s = '$v';
+          return s.startsWith('"') ? s.replaceAll('"', '') : s;
+        }
+
+        parts.add('$key: ${fmt(pair[0])} → ${fmt(pair[1])}');
+      }
+    }
+    return parts.join(' · ');
   }
 
   int _intOf(TextEditingController ctrl) => int.tryParse(ctrl.text.trim()) ?? 0;
@@ -231,6 +333,8 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       _buildPeakWindowsCard(),
                       const SizedBox(height: 32),
                       _buildSaveButton(),
+                      const SizedBox(height: 28),
+                      _buildHistoryCard(),
                     ],
                   ),
                 ),
@@ -415,8 +519,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     );
   }
 
-  Widget _buildFareCategoryCard(String category) {
-    final catLabels = {
+  Widget _buildFareCategoryCard(String category) {    final catLabels = {
       'moto': 'KupON Moto (Classe 2 Rodas)',
       'car_standard': 'KupON Standard (Econômico)',
       'car_comfort': 'KupON Comfort (Espaço e Ar)',
@@ -466,13 +569,27 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  catLabels[category] ?? category.toUpperCase(),
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFE5E2E1),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      catLabels[category] ?? category.toUpperCase(),
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFE5E2E1),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Última alteração: ${_fmtDate(_tariffUpdatedAt[category])}',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF9C9896),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -804,6 +921,105 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Histórico de auditoria — datas de alteração de tarifas e outras
+  /// configurações (tabela config_change_log, alimentada por trigger).
+  Widget _buildHistoryCard() {
+    if (_history.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF575757).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.history_rounded,
+                color: Color(0xFFE5E2E1),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Histórico de Alterações',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFE5E2E1),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Últimas alterações gravadas na base (tarifas, janelas, pacotes e configurações).',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 11,
+              color: const Color(0xFF9C9896),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ..._history.take(20).map((entry) {
+            final changes = entry['changes'] is Map
+                ? Map<String, dynamic>.from(entry['changes'] as Map)
+                : <String, dynamic>{};
+            final summary = _historyChangeSummary(changes);
+            // Nos 'tariffs' o row_key é o uuid -> mostra o nome da categoria.
+            String rowLabel = '${entry['row_key'] ?? ''}';
+            final catForId = _tariffIds.entries
+                .where((e) => e.value == rowLabel)
+                .map((e) => e.key)
+                .firstOrNull;
+            if (catForId != null) rowLabel = catForId;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(width: 2),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_historyTableLabel('${entry['table_name'] ?? ''}')}'
+                          '${rowLabel.isEmpty ? '' : ' (${rowLabel.replaceAll('_', ' ')})'} · '
+                          '${_fmtDate(DateTime.tryParse('${entry['changed_at'] ?? ''}'))}',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFC9C5C2),
+                          ),
+                        ),
+                        if (summary.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            summary,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              color: const Color(0xFF9C9896),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 

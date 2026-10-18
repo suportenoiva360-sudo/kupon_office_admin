@@ -11,6 +11,7 @@ import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/core/routes/app_router.dart'
     show invalidateAdminCache;
 import 'package:kupon_office_admin/features/admin/application/admin_activity_center.dart';
+import 'package:kupon_office_admin/features/admin/support/admin_system_notifications.dart';
 
 class AdminShell extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -79,6 +80,8 @@ class _AdminShellState extends State<AdminShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserProvider>().loadAll();
       AdminActivityCenter.instance.init();
+      // Notificações nativas do browser (aparecem com o painel em background).
+      AdminSystemNotifications.ensurePermission();
     });
   }
 
@@ -91,6 +94,14 @@ class _AdminShellState extends State<AdminShell> {
   /// Aviso discreto quando chega atividade nova em tempo real.
   void _onNewActivity(AdminActivityItem item) {
     if (!mounted) return;
+    // Tab escondida → notificação nativa do browser (é o "background").
+    if (AdminSystemNotifications.isSupported) {
+      AdminSystemNotifications.show(
+        title: item.title,
+        body: item.subtitle,
+        tag: item.id,
+      );
+    }
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
     messenger.hideCurrentSnackBar();
@@ -485,6 +496,64 @@ class _AdminShellState extends State<AdminShell> {
               ],
             ),
           ),
+          // Ativação manual das notificações nativas (browsers que exigem
+          // gesto do utilizador para pedir permissão).
+          if (AdminSystemNotifications.isSupported &&
+              AdminSystemNotifications.permissionStatus == 'default')
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  await AdminSystemNotifications.ensurePermission();
+                  if (mounted) setState(() {});
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF242322),
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFF2A2A2A)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.notifications_active_rounded,
+                        size: 15,
+                        color: Color(0xFFFF6B00),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Ativar notificações do sistema',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFE5E2E1),
+                              ),
+                            ),
+                            Text(
+                              'Avisos do browser mesmo com o painel escondido',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 10.5,
+                                color: const Color(0xFF9C9896),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           const Divider(color: Color(0xFF2A2A2A), height: 1),
           if (center.error != null) _activityError(center),
           Flexible(
