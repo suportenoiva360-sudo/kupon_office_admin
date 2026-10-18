@@ -45,6 +45,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
   int _openTickets = 0;
   List<DailyPoint> _daily = [];
   List<DashAlert> _alerts = [];
+  // Chip de categoria ativo nos "Alertas Recentes" ('all' = Todos).
+  String _alertFilter = 'all';
+  // Alertas ocultos visualmente nesta sessão (limpa ao recarregar a página).
+  Set<String> _dismissedAlertIds = {};
   List<_DashMapDriver> _liveDrivers = [];
   _DashMapDriver? _hoveredDriver;
   int? _selectedDay;
@@ -1395,8 +1399,69 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     );
   }
 
+  /// Chip de cada tipo de alerta do dashboard.
+  static String _alertGroupOf(String kind) {
+    switch (kind) {
+      case 'approval':
+        return 'approval';
+      case 'sos':
+        return 'sos';
+      default:
+        return 'ticket'; // 'ticket'
+    }
+  }
+
+  static const List<(String, String)> _alertChips = [
+    ('all', 'Todos'),
+    ('approval', 'Aprovações'),
+    ('sos', 'SOS'),
+    ('ticket', 'Tickets'),
+  ];
+
+  Widget _buildAlertFilterChips() {
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final (value, label) in _alertChips)
+          GestureDetector(
+            onTap: () => setState(() => _alertFilter = value),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _alertFilter == value
+                    ? const Color(0xFFFF6B00).withValues(alpha: 0.16)
+                    : const Color(0xFF242322),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _alertFilter == value
+                      ? const Color(0xFFFF6B00)
+                      : const Color(0xFF2A2A2A),
+                ),
+              ),
+              child: Text(
+                label,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _alertFilter == value
+                      ? const Color(0xFFFF6B00)
+                      : const Color(0xFF9C9896),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildAlertsSection(double width, BuildContext context) {
     final List<_AlertItem> alerts = _alerts
+        .where(
+          (a) =>
+              (_alertFilter == 'all' ||
+                  _alertGroupOf(a.kind) == _alertFilter) &&
+              !_dismissedAlertIds.contains(a.id),
+        )
         .map(
           (a) => _AlertItem(
             title: a.title,
@@ -1434,24 +1499,70 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                   color: const Color(0xFFE5E2E1),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF93000A).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '${_pendingDrivers + _openTickets} URGENTE',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFFFB4AB),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_dismissedAlertIds.isNotEmpty)
+                    TextButton(
+                      onPressed: () => setState(() => _dismissedAlertIds = {}),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 32),
+                      ),
+                      child: Text(
+                        'restaurar ocultas (${_dismissedAlertIds.length})',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  if (alerts.isNotEmpty)
+                    IconButton(
+                      tooltip: _alertFilter == 'all'
+                          ? 'Ocultar as visíveis (só nesta sessão)'
+                          : 'Ocultar as visíveis do chip (só nesta sessão)',
+                      onPressed: () => setState(() {
+                        _dismissedAlertIds = {
+                          ..._dismissedAlertIds,
+                          for (final a in _alerts)
+                            if (_alertFilter == 'all' ||
+                                _alertGroupOf(a.kind) == _alertFilter)
+                              a.id,
+                        };
+                      }),
+                      icon: const Icon(
+                        Icons.delete_sweep_rounded,
+                        size: 18,
+                        color: Color(0xFFE2BFB0),
+                      ),
+                    ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF93000A).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${_pendingDrivers + _openTickets} URGENTE',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFFFB4AB),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+          _buildAlertFilterChips(),
+          const SizedBox(height: 10),
           Expanded(
             child: alerts.isEmpty
                 ? Center(
@@ -1465,7 +1576,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Sem alertas no momento',
+                          _alertFilter == 'all'
+                              ? 'Sem alertas no momento'
+                              : 'Sem alertas em '
+                                    '${_alertChips.firstWhere((c) => c.$1 == _alertFilter).$2}',
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 13,
                             color: const Color(
@@ -1473,6 +1587,18 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                             ).withValues(alpha: 0.7),
                           ),
                         ),
+                        if (_dismissedAlertIds.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            '${_dismissedAlertIds.length} ocultos nesta sessão',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 10.5,
+                              color: const Color(
+                                0xFFE2BFB0,
+                              ).withValues(alpha: 0.45),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   )

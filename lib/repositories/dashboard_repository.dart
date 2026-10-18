@@ -32,6 +32,10 @@ class DailyPoint {
 /// Alerta apresentado na secção "Alertas Recentes".
 class DashAlert {
   final String kind;
+
+  /// Id único do registo de origem (ex.: `approval:<uuid>`) — usado pelo
+  /// dismiss visual dos "Alertas Recentes" no dashboard.
+  final String id;
   final String title;
   final String description;
   final String time;
@@ -40,6 +44,7 @@ class DashAlert {
 
   const DashAlert({
     required this.kind,
+    required this.id,
     required this.title,
     required this.description,
     required this.time,
@@ -94,15 +99,16 @@ class DashboardRepository {
   }) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final rangeStart =
-        start ?? today.subtract(const Duration(days: 30));
+    final rangeStart = start ?? today.subtract(const Duration(days: 30));
     final rangeEnd = end ?? now;
 
     final duration = rangeEnd.difference(rangeStart);
     final prevStart = rangeStart.subtract(duration);
     final prevEnd = rangeStart;
-    final daysInPeriod =
-        (rangeEnd.difference(rangeStart).inDays + 1).clamp(1, 90);
+    final daysInPeriod = (rangeEnd.difference(rangeStart).inDays + 1).clamp(
+      1,
+      90,
+    );
 
     var failedCount = 0;
     Future<T> safe<T>(Future<T> Function() fn, T fallback) async {
@@ -115,33 +121,15 @@ class DashboardRepository {
     }
 
     final results = await Future.wait<Object?>([
-      safe(() => getRevenue(
-            start: rangeStart,
-            end: rangeEnd,
-          ), 0),
-      safe(() => getRevenue(
-            start: prevStart,
-            end: prevEnd,
-          ), 0),
-      safe(() => getTripsCount(
-            start: rangeStart,
-            end: rangeEnd,
-          ), 0),
-      safe(() => getTripsCount(
-            start: prevStart,
-            end: prevEnd,
-          ), 0),
+      safe(() => getRevenue(start: rangeStart, end: rangeEnd), 0),
+      safe(() => getRevenue(start: prevStart, end: prevEnd), 0),
+      safe(() => getTripsCount(start: rangeStart, end: rangeEnd), 0),
+      safe(() => getTripsCount(start: prevStart, end: prevEnd), 0),
       safe(getOnlineDrivers, 0),
       safe(getApprovedDrivers, 0),
       safe(getActiveUsers, 0),
-      safe(() => getNewUsers(
-            start: rangeStart,
-            end: rangeEnd,
-          ), 0),
-      safe(() => getNewUsers(
-            start: prevStart,
-            end: prevEnd,
-          ), 0),
+      safe(() => getNewUsers(start: rangeStart, end: rangeEnd), 0),
+      safe(() => getNewUsers(start: prevStart, end: prevEnd), 0),
       safe(getPendingDriversCount, 0),
       safe(getOpenTickets, 0),
       safe(
@@ -193,10 +181,7 @@ class DashboardRepository {
   }
 
   /// Contagem de viagens criadas no intervalo (inclusivo de `end`).
-  Future<int> getTripsCount({
-    required DateTime start,
-    DateTime? end,
-  }) async {
+  Future<int> getTripsCount({required DateTime start, DateTime? end}) async {
     var query = _client
         .from('trips')
         .select('id')
@@ -329,7 +314,9 @@ class DashboardRepository {
     try {
       final approvals = await _client
           .from('drivers')
-          .select('id, category, created_at, users!inner(name, photo_url, role)')
+          .select(
+            'id, category, created_at, users!inner(name, photo_url, role)',
+          )
           .eq('is_approved', false)
           .not('users.role', 'eq', 'admin')
           .order('created_at', ascending: false)
@@ -337,14 +324,17 @@ class DashboardRepository {
       for (final d in approvals) {
         final user = (d['users'] as Map?) ?? {};
         final name = user['name'] as String? ?? 'Novo Motorista';
-        alerts.add(DashAlert(
-          kind: 'approval',
-          title: 'Novo Registo de Motorista',
-          description: '$name registado para aprovação.',
-          time: _relativeTime(_parseAt(d['created_at'])),
-          at: _parseAt(d['created_at']),
-          route: '/motoristas',
-        ));
+        alerts.add(
+          DashAlert(
+            kind: 'approval',
+            id: 'approval:${d['id']}',
+            title: 'Novo Registo de Motorista',
+            description: '$name registado para aprovação.',
+            time: _relativeTime(_parseAt(d['created_at'])),
+            at: _parseAt(d['created_at']),
+            route: '/motoristas',
+          ),
+        );
       }
     } catch (_) {}
 
@@ -357,16 +347,19 @@ class DashboardRepository {
           .limit(3);
       for (final s in sos) {
         final addr = s['address'] as String?;
-        alerts.add(DashAlert(
-          kind: 'sos',
-          title: 'Sinal SOS de Emergência',
-          description: addr != null && addr.isNotEmpty
-              ? 'Alerta SOS ativo — $addr.'
-              : 'Alerta SOS ativo — requer ação da equipa.',
-          time: _relativeTime(_parseAt(s['created_at'])),
-          at: _parseAt(s['created_at']),
-          route: '/sos',
-        ));
+        alerts.add(
+          DashAlert(
+            kind: 'sos',
+            id: 'sos:${s['id']}',
+            title: 'Sinal SOS de Emergência',
+            description: addr != null && addr.isNotEmpty
+                ? 'Alerta SOS ativo — $addr.'
+                : 'Alerta SOS ativo — requer ação da equipa.',
+            time: _relativeTime(_parseAt(s['created_at'])),
+            at: _parseAt(s['created_at']),
+            route: '/sos',
+          ),
+        );
       }
     } catch (_) {}
 
@@ -381,22 +374,26 @@ class DashboardRepository {
         final user = (t['users'] as Map?) ?? {};
         final name = user['name'] as String? ?? 'Utilizador';
         final subject = t['subject'] as String?;
-        alerts.add(DashAlert(
-          kind: 'ticket',
-          title: 'Ticket de Suporte Aberto',
-          description: subject != null && subject.isNotEmpty
-              ? '$subject (por $name)'
-              : 'Ticket aberto por $name.',
-          time: _relativeTime(_parseAt(t['created_at'])),
-          at: _parseAt(t['created_at']),
-          route: '/suporte',
-        ));
+        alerts.add(
+          DashAlert(
+            kind: 'ticket',
+            id: 'ticket:${t['id']}',
+            title: 'Ticket de Suporte Aberto',
+            description: subject != null && subject.isNotEmpty
+                ? '$subject (por $name)'
+                : 'Ticket aberto por $name.',
+            time: _relativeTime(_parseAt(t['created_at'])),
+            at: _parseAt(t['created_at']),
+            route: '/suporte',
+          ),
+        );
       }
     } catch (_) {}
 
     alerts.sort(
-      (a, b) => (b.at ?? DateTime.fromMillisecondsSinceEpoch(0))
-          .compareTo(a.at ?? DateTime.fromMillisecondsSinceEpoch(0)),
+      (a, b) => (b.at ?? DateTime.fromMillisecondsSinceEpoch(0)).compareTo(
+        a.at ?? DateTime.fromMillisecondsSinceEpoch(0),
+      ),
     );
     return alerts;
   }
@@ -424,7 +421,9 @@ class DashboardRepository {
     // 1. Buscar motoristas aprovados
     var driverQuery = _client
         .from('drivers')
-        .select('id, rating, category, is_approved, is_blocked, users!inner(name, photo_url, role)')
+        .select(
+          'id, rating, category, is_approved, is_blocked, users!inner(name, photo_url, role)',
+        )
         .eq('is_approved', true)
         .eq('is_blocked', false)
         // Ranking não inclui a conta admin.
@@ -469,12 +468,18 @@ class DashboardRepository {
       final driverId = t['driver_id'] as String?;
       if (driverId == null || !driverMap.containsKey(driverId)) continue;
       final fare = (t['fare'] as num?)?.toInt() ?? 0;
-      driverMap[driverId]!['period_trips'] = (driverMap[driverId]!['period_trips'] as int) + 1;
-      driverMap[driverId]!['period_revenue'] = (driverMap[driverId]!['period_revenue'] as int) + fare;
+      driverMap[driverId]!['period_trips'] =
+          (driverMap[driverId]!['period_trips'] as int) + 1;
+      driverMap[driverId]!['period_revenue'] =
+          (driverMap[driverId]!['period_revenue'] as int) + fare;
     }
 
-    final list = driverMap.values.where((d) => (d['period_trips'] as int) > 0).toList();
-    list.sort((a, b) => (b['period_trips'] as int).compareTo(a['period_trips'] as int));
+    final list = driverMap.values
+        .where((d) => (d['period_trips'] as int) > 0)
+        .toList();
+    list.sort(
+      (a, b) => (b['period_trips'] as int).compareTo(a['period_trips'] as int),
+    );
     return list.take(limit).toList();
   }
 
