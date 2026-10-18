@@ -10,6 +10,7 @@ import 'package:kupon_office_admin/features/admin/presentation/pages/admin_users
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_financeiro_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_suporte_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_driver_detail_page.dart';
+import 'package:kupon_office_admin/features/admin/presentation/pages/admin_recompensas_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_promocoes_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_driver_packages_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_planos_page.dart';
@@ -135,6 +136,16 @@ final GoRouter appRouter = GoRouter(
               path: '/promocoes',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: AdminPromocoesPage(),
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/recompensas',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: AdminRecompensasPage(),
               ),
             ),
           ],

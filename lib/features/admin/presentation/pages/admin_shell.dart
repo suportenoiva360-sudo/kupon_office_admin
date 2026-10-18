@@ -57,6 +57,11 @@ class _AdminShellState extends State<AdminShell> {
       label: 'Promoções',
     ),
     _NavDestination(
+      icon: Icons.card_giftcard_outlined,
+      selectedIcon: Icons.card_giftcard_rounded,
+      label: 'Recompensas',
+    ),
+    _NavDestination(
       icon: Icons.card_membership_outlined,
       selectedIcon: Icons.card_membership_rounded,
       label: 'Planos',
@@ -805,6 +810,7 @@ class _AdminShellState extends State<AdminShell> {
     final (icon, accent) = switch (item.kind) {
       'sos' => (Icons.emergency, const Color(0xFFCF6679)),
       'approval' => (Icons.directions_car_rounded, const Color(0xFFFF6B00)),
+      'reward' => (Icons.card_giftcard_rounded, const Color(0xFF4CAF88)),
       _ => (Icons.support_agent_rounded, const Color(0xFFE2BFB0)),
     };
     final titleColor = const Color(

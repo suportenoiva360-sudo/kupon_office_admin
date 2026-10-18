@@ -18,6 +18,8 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   bool _loaded = false;
 
   final _fares = <String, Map<String, TextEditingController>>{};
+  // Recompensa por convite (kupon_settings.referral_reward_amount, Kz).
+  final TextEditingController _referralRewardCtrl = TextEditingController();
   // Última alteração de cada categoria (tariffs.updated_at).
   final _tariffUpdatedAt = <String, DateTime?>{};
   // id(uuid) de cada tarifa — mapeia row_key do histórico -> categoria.
@@ -65,6 +67,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     for (final ctrl in _windowFields) {
       ctrl.dispose();
     }
+    _referralRewardCtrl.dispose();
     super.dispose();
   }
 
@@ -78,6 +81,22 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
             ',commission_percentage,is_active,updated_at',
           )
           .order('category');
+
+      // Recompensa por convite (kupon_settings).
+      try {
+        final setting = await _db
+            .from('kupon_settings')
+            .select('value')
+            .eq('key', 'referral_reward_amount')
+            .maybeSingle();
+        if (setting != null) {
+          _referralRewardCtrl.text = '${setting['value'] ?? '500'}';
+        } else {
+          _referralRewardCtrl.text = '500';
+        }
+      } catch (_) {
+        _referralRewardCtrl.text = '500';
+      }
 
       for (final row in (tariffRows as List)) {
         final cat = row['category'] as String?;
@@ -175,8 +194,19 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         }
       }
 
-      for (var i = 0; i < _windowFields.length; i += 5) {
-        final id = _windowFields[i + 4].text.trim();
+      // Recompensa por convite (configurável — 1.3/3.1).
+      final rewardRows = await _db
+          .from('kupon_settings')
+          .upsert({
+            'key': 'referral_reward_amount',
+            'value': _intOf(_referralRewardCtrl),
+          }, onConflict: 'key')
+          .select();
+      if ((rewardRows as List).isEmpty) {
+        failure.add('recompensa por convite (0 linhas)');
+      }
+
+      for (var i = 0; i < _windowFields.length; i += 5) {        final id = _windowFields[i + 4].text.trim();
         if (id.isEmpty) continue;
         final rows = await _db
             .from('peak_windows')
@@ -332,6 +362,14 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       const SizedBox(height: 14),
                       _buildPeakWindowsCard(),
                       const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Recompensa por Convite',
+                        'Valor (Kz) por convite validado — usado nas boas-vindas do convidado e na recompensa pendente do convidante (configuração referral_reward_amount).',
+                        Icons.card_giftcard_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildReferralRewardCard(),
+                      const SizedBox(height: 12),
                       _buildSaveButton(),
                       const SizedBox(height: 28),
                       _buildHistoryCard(),
@@ -339,6 +377,75 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                   ),
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildReferralRewardCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceContainerHighest),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryContainer.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.card_giftcard_rounded,
+              color: AppTheme.primaryContainer,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'VALOR POR CONVITE (Kz)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 120,
+            child: TextField(
+              controller: _referralRewardCtrl,
+              keyboardType: const TextInputType.numberWithOptions(),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.onSurface,
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                suffixText: 'Kz',
+                suffixStyle: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+                filled: true,
+                fillColor: AppTheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppTheme.surfaceContainerHighest,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

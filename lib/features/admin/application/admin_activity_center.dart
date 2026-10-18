@@ -178,6 +178,21 @@ factory AdminActivityItem.fromTicket(Map<String, dynamic> row) {    final name =
       route: '/suporte',
     );
   }
+
+  factory AdminActivityItem.fromReward(Map<String, dynamic> row) {
+    final referrer = (row['referrer'] as Map?) ?? const {};
+    final name = referrer['name'] as String? ?? 'Convidante';
+    final amount = row['amount']?.toString() ?? '?';
+    return AdminActivityItem(
+      id: 'reward:${row['id']}',
+      kind: 'reward',
+      title: 'Recompensa de convite pendente',
+      subtitle: '$name · $amount Kz',
+      at: DateTime.tryParse(row['created_at'] as String? ?? '') ??
+          DateTime.now(),
+      route: '/recompensas',
+    );
+  }
 }
 
 /// Feed central de atividade do admin, em tempo real, mantido em memória
@@ -253,6 +268,7 @@ class AdminActivityCenter extends ChangeNotifier {
     switch (kind) {
       case 'sos':
       case 'approval':
+      case 'reward':
         return 'action';
       case 'ticket':
       case 'reply':
@@ -373,6 +389,21 @@ class AdminActivityCenter extends ChangeNotifier {
         }
       }
 
+      // Recompensas de convite: resolvem-se quando já não estão pendentes
+      // (aprovada/rejeitada por outro admin ou decidiu-se noutro ecrã).
+      final rws = cands.where((e) => e.kind == 'reward').map(uuidOf).toList();
+      if (rws.isNotEmpty) {
+        final rows = await _client
+            .from('referral_rewards')
+            .select('id')
+            .inFilter('id', rws)
+            .inFilter('status', ['pending', 'in_review']);
+        final still = <String>{for (final r in rows as List) r['id'] as String};
+        for (final e in cands.where((e) => e.kind == 'reward')) {
+          if (!still.contains(uuidOf(e))) evict.add(e.id);
+        }
+      }
+
       // Respostas de suporte: resolvem-se quando o ticket do pai fecha.
       final replTickets = <String>[];
       for (final e in cands.where((e) => e.kind == 'reply')) {
@@ -428,6 +459,7 @@ class AdminActivityCenter extends ChangeNotifier {
     await _loadSos(failed);
     await _loadDrivers(failed);
     await _loadTickets(failed);
+    await _loadRewards(failed);
     await _loadUsers(failed);
     await _loadTrips(failed);
     await _loadPayments(failed);
@@ -488,6 +520,24 @@ class AdminActivityCenter extends ChangeNotifier {
       }
     } catch (_) {
       failed.add('tickets');
+    }
+  }
+
+  Future<void> _loadRewards(List<String> failed) async {
+    try {
+      final rows = await _client
+          .from('referral_rewards')
+          .select(
+            'id,amount,created_at,referrer:users!referral_rewards_referrer_fk(name)',
+          )
+          .inFilter('status', ['pending', 'in_review'])
+          .order('created_at', ascending: false)
+          .limit(_limit);
+      for (final row in rows) {
+        _add(AdminActivityItem.fromReward(row));
+      }
+    } catch (_) {
+      failed.add('recompensas');
     }
   }
 
@@ -592,6 +642,19 @@ class AdminActivityCenter extends ChangeNotifier {
             table: 'support_replies',
             callback: (payload) =>
                 _offer(AdminActivityItem.fromReply(payload.newRecord), live: true),
+          )
+          .subscribe(),
+    );
+    // Recompensas de convite pendentes (fila de aprovação)
+    _channels.add(
+      _client
+          .channel('admin-center-rewards')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'referral_rewards',
+            callback: (payload) =>
+                _offer(AdminActivityItem.fromReward(payload.newRecord), live: true),
           )
           .subscribe(),
     );
