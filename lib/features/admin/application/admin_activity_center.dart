@@ -8,11 +8,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 @immutable
 class AdminActivityItem {
   final String id;
-  final String kind; // 'sos' | 'approval' | 'ticket'
+  final String kind; // 'sos' | 'approval' | 'ticket' | 'user' | 'trip' | 'payment' | 'withdrawal' | 'reply'
   final String title;
   final String subtitle;
   final DateTime at;
   final String route;
+
+  /// Id-pai quando faz sentido (ex.: ticket de uma resposta de suporte) —
+  /// usado pelo "Limpar resolvidos" para saber se o item já se resolveu.
+  final String? metadata;
 
   const AdminActivityItem({
     required this.id,
@@ -21,6 +25,7 @@ class AdminActivityItem {
     required this.subtitle,
     required this.at,
     required this.route,
+    this.metadata,
   });
 
   factory AdminActivityItem.fromSos(Map<String, dynamic> row) {
@@ -140,6 +145,9 @@ factory AdminActivityItem.fromReply(Map<String, dynamic> row) {
     at: DateTime.tryParse(row['created_at'] as String? ?? '') ??
         DateTime.now(),
     route: '/suporte',
+    metadata: '${row['ticket_id'] ?? ''}'.isEmpty
+        ? null
+        : '${row['ticket_id']}',
   );
 }
 
@@ -155,6 +163,7 @@ AdminActivityItem withText({
     subtitle: subtitle ?? this.subtitle,
     at: at,
     route: route,
+    metadata: metadata,
   );
 }
 
@@ -203,6 +212,198 @@ class AdminActivityCenter extends ChangeNotifier {
   List<AdminActivityItem> get unreadItems =>
       _items.where((e) => !_seenIds.contains(e.id)).toList();
   int get unreadCount => unreadItems.length;
+
+  /// ---- Filtros de categoria (chips do sino) ----
+  ///
+  /// Os 8 tipos de evento agrupam-se em 4 chips + Todas.
+  String _filter = 'all';
+  static const List<String> groupKeys = [
+    'all',
+    'action',
+    'support',
+    'payments',
+    'news',
+  ];
+
+  String get activeFilter => _filter;
+
+  void setFilter(String value) {
+    if (value == _filter) return;
+    _filter = value;
+    notifyListeners();
+  }
+
+  String groupLabel(String key) {
+    switch (key) {
+      case 'all':
+        return 'Todas';
+      case 'action':
+        return 'Ação';
+      case 'support':
+        return 'Suporte';
+      case 'payments':
+        return 'Pagamentos';
+      default:
+        return 'Novidades';
+    }
+  }
+
+  /// Chip de cada tipo de evento.
+  static String groupOf(String kind) {
+    switch (kind) {
+      case 'sos':
+      case 'approval':
+        return 'action';
+      case 'ticket':
+      case 'reply':
+        return 'support';
+      case 'payment':
+      case 'withdrawal':
+        return 'payments';
+      default:
+        return 'news'; // 'user' | 'trip'
+    }
+  }
+
+  /// Itens do filtro ativo (o badge global continua a contar tudo).
+  List<AdminActivityItem> get filteredItems => _filter == 'all'
+      ? List.unmodifiable(_items)
+      : _items.where((e) => groupOf(e.kind) == _filter).toList();
+
+  bool hasSeenIn(String group) => _items.any(
+        (e) =>
+            (group == 'all' || groupOf(e.kind) == group) &&
+            _seenIds.contains(e.id),
+      );
+
+  /// Remove da lista os itens do grupo [group] que o admin já viu
+  /// ("limpar lidas" — os não vistos continuam).
+  void clearSeenIn(String group) {
+    final before = _items.length;
+    _items.removeWhere((e) {
+      final inGroup = group == 'all' || groupOf(e.kind) == group;
+      return inGroup && _seenIds.contains(e.id);
+    });
+    if (_items.length != before) notifyListeners();
+  }
+
+  /// Remove da lista os itens RESOLVIDOS que ficarem presos na memória
+  /// (SOS resolvido, motorista aprovado, ticket fechado, pagamento
+  /// processado) — re-verifica o estado real no servidor, sem tocar nos
+  /// itens que ainda precisam de intervenção. Itens de informação (contas
+  /// e corridas) nunca ficam "resolvidos", por isso escapam.
+  Future<void> purgeResolved({String group = 'all'}) async {
+    String uuidOf(AdminActivityItem e) => e.id.split(':').last;
+    final evict = <String>{};
+    final cands = <AdminActivityItem>[
+      for (final e in _items)
+        if (group == 'all' || groupOf(e.kind) == group) e,
+    ];
+    if (cands.isEmpty) return;
+
+    try {
+      // SOS ativos
+      final sos = cands.where((e) => e.kind == 'sos').map(uuidOf).toList();
+      if (sos.isNotEmpty) {
+        final rows = await _client
+            .from('sos_alerts')
+            .select('id')
+            .inFilter('id', sos)
+            .eq('status', 'active');
+        final still = <String>{for (final r in rows as List) r['id'] as String};
+        for (final e in cands.where((e) => e.kind == 'sos')) {
+          if (!still.contains(uuidOf(e))) evict.add(e.id);
+        }
+      }
+
+      // Motoristas ainda por aprovar
+      final aps = cands.where((e) => e.kind == 'approval').map(uuidOf).toList();
+      if (aps.isNotEmpty) {
+        final rows = await _client
+            .from('drivers')
+            .select('id')
+            .inFilter('id', aps)
+            .eq('is_approved', false);
+        final still = <String>{for (final r in rows as List) r['id'] as String};
+        for (final e in cands.where((e) => e.kind == 'approval')) {
+          if (!still.contains(uuidOf(e))) evict.add(e.id);
+        }
+      }
+
+      // Tickets ainda abertos
+      final tks = cands.where((e) => e.kind == 'ticket').map(uuidOf).toList();
+      if (tks.isNotEmpty) {
+        final rows = await _client
+            .from('support_tickets')
+            .select('id')
+            .inFilter('id', tks)
+            .eq('status', 'open');
+        final still = <String>{for (final r in rows as List) r['id'] as String};
+        for (final e in cands.where((e) => e.kind == 'ticket')) {
+          if (!still.contains(uuidOf(e))) evict.add(e.id);
+        }
+      }
+
+      // Recargas/saques ainda pendentes
+      final pays =
+          cands.where((e) => e.kind == 'payment').map(uuidOf).toList();
+      if (pays.isNotEmpty) {
+        final rows = await _client
+            .from('payment_requests')
+            .select('id')
+            .inFilter('id', pays)
+            .eq('status', 'pending');
+        final still = <String>{for (final r in rows as List) r['id'] as String};
+        for (final e in cands.where((e) => e.kind == 'payment')) {
+          if (!still.contains(uuidOf(e))) evict.add(e.id);
+        }
+      }
+
+      final wds =
+          cands.where((e) => e.kind == 'withdrawal').map(uuidOf).toList();
+      if (wds.isNotEmpty) {
+        final rows = await _client
+            .from('withdrawals')
+            .select('id')
+            .inFilter('id', wds)
+            .eq('status', 'pending');
+        final still = <String>{for (final r in rows as List) r['id'] as String};
+        for (final e in cands.where((e) => e.kind == 'withdrawal')) {
+          if (!still.contains(uuidOf(e))) evict.add(e.id);
+        }
+      }
+
+      // Respostas de suporte: resolvem-se quando o ticket do pai fecha.
+      final replTickets = <String>[];
+      for (final e in cands.where((e) => e.kind == 'reply')) {
+        final tid = e.metadata;
+        if (tid == null || tid.isEmpty) continue;
+        replTickets.add(tid);
+      }
+      if (replTickets.isNotEmpty) {
+        final rows = await _client
+            .from('support_tickets')
+            .select('id, status')
+            .inFilter('id', replTickets.toSet().toList());
+        final statusById = <String, String>{
+          for (final r in rows as List)
+            r['id'] as String: r['status'] as String? ?? 'open',
+        };
+        for (final e in cands.where((e) => e.kind == 'reply')) {
+          final tid = e.metadata;
+          if (tid != null && statusById[tid] != 'open') evict.add(e.id);
+        }
+      }
+    } catch (_) {
+      // Sem rede ou colunas: não evicta nada — seguro.
+      return;
+    }
+
+    if (evict.isEmpty) return;
+    _items.removeWhere((e) => evict.contains(e.id));
+    _seenIds.removeAll(evict);
+    notifyListeners();
+  }
 
   /// Chamado apenas quando chega atividade **nova** em tempo real (nunca no
   /// carregamento inicial), para a UI poder avisar o admin.

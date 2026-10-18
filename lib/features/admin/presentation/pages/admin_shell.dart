@@ -445,7 +445,8 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   Widget _buildActivityMenu(AdminActivityCenter center) {
-    final items = center.items;
+    final filter = center.activeFilter;
+    final items = center.filteredItems;
     final unreadIds = center.unreadItems.map((e) => e.id).toSet();
     final hasUnread = unreadIds.isNotEmpty;
     return Container(
@@ -491,6 +492,35 @@ class _AdminShellState extends State<AdminShell> {
                     Icons.refresh_rounded,
                     size: 16,
                     color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Chips de categoria (o badge global continua a contar tudo).
+          _buildActivityFilterChips(center, filter),
+          // Limpeza no âmbito do chip ativo.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _activityAction(
+                    label: 'Limpar lidas',
+                    icon: Icons.done_all_rounded,
+                    color: const Color(0xFF4CAF88),
+                    enabled: center.hasSeenIn(filter),
+                    onPressed: () => center.clearSeenIn(filter),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _activityAction(
+                    label: 'Limpar resolvidos',
+                    icon: Icons.cleaning_services_rounded,
+                    color: const Color(0xFFE2BFB0),
+                    enabled: items.isNotEmpty,
+                    onPressed: () => center.purgeResolved(group: filter),
                   ),
                 ),
               ],
@@ -577,7 +607,9 @@ class _AdminShellState extends State<AdminShell> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Sem atividade no momento',
+                          filter == 'all'
+                              ? 'Sem atividade no momento'
+                              : 'Sem atividade em ${center.groupLabel(filter)}',
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 12,
                             color: const Color(
@@ -627,6 +659,106 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   /// Banner de erro do feed (permite recarregar sem fechar o menu).
+  /// Chips do sino: Todas / Ação / Suporte / Pagamentos / Novidades.
+  Widget _buildActivityFilterChips(
+    AdminActivityCenter center,
+    String active,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        child: Row(
+          children: [
+            for (final key in AdminActivityCenter.groupKeys)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () => center.setFilter(key),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: active == key
+                          ? const Color(0xFFFF6B00).withValues(alpha: 0.16)
+                          : const Color(0xFF242322),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: active == key
+                            ? const Color(0xFFFF6B00)
+                            : const Color(0xFF2A2A2A),
+                      ),
+                    ),
+                    child: Text(
+                      center.groupLabel(key),
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: active == key
+                            ? const Color(0xFFFF6B00)
+                            : const Color(0xFF9C9896),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _activityAction({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool enabled,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: enabled ? onPressed : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF242322),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF2A2A2A)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 13,
+                color: enabled ? color : const Color(0xFF5C5856),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: enabled
+                        ? const Color(0xFFE5E2E1)
+                        : const Color(0xFF5C5856),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _activityError(AdminActivityCenter center) {
     return Container(
       width: double.infinity,
