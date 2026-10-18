@@ -53,9 +53,11 @@ class DriverRepository {
     try {
       var query = _client
           .from('drivers')
-          .select('*, users!inner(id, name, photo_url)')
+          .select('*, users!inner(id, name, photo_url, role)')
           .eq('is_online', true)
-          .eq('is_approved', true);
+          .eq('is_approved', true)
+          // Admin não aparece como motorista.
+          .not('users.role', 'eq', 'admin');
 
       if (category != null) {
         query = query.eq('category', category);

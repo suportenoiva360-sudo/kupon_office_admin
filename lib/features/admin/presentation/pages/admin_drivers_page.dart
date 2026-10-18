@@ -52,6 +52,8 @@ class _AdminDriversPageState extends State<AdminDriversPage>
       final data = await _db
           .from('drivers')
           .select('*, users!inner(id, name, email, phone, photo_url)')
+          // Conta admin não aparece como motorista.
+          .not('users.role', 'eq', 'admin')
           .order('created_at', ascending: false);
       final onTrip = await _fetchOnTripDriverIds();
 

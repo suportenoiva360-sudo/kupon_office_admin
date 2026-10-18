@@ -210,24 +210,28 @@ class DashboardRepository {
   Future<int> getOnlineDrivers() async {
     final rows = await _client
         .from('drivers')
-        .select('id')
+        .select('id, users!inner(role)')
         .eq('is_online', true)
         .eq('is_approved', true)
-        .eq('is_blocked', false);
+        .eq('is_blocked', false)
+        // Admin não conta como motorista.
+        .not('users.role', 'eq', 'admin');
     return rows.length;
   }
 
   Future<int> getApprovedDrivers() async {
     final rows = await _client
         .from('drivers')
-        .select('id')
+        .select('id, users!inner(role)')
         .eq('is_approved', true)
-        .eq('is_blocked', false);
+        .eq('is_blocked', false)
+        .not('users.role', 'eq', 'admin');
     return rows.length;
   }
 
   Future<int> getActiveUsers() async {
-    return (await _client.from('users').select('id')).length;
+    return (await _client.from('users').select('id').neq('role', 'admin'))
+        .length;
   }
 
   /// Novos registos (perfil) no intervalo. Defensivo: sem `created_at`
@@ -240,6 +244,7 @@ class DashboardRepository {
       final rows = await _client
           .from('users')
           .select('id')
+          .neq('role', 'admin')
           .gte('created_at', start.toUtc().toIso8601String())
           .lte('created_at', end.toUtc().toIso8601String());
       return rows.length;
@@ -251,9 +256,10 @@ class DashboardRepository {
   Future<int> getPendingDriversCount() async {
     final rows = await _client
         .from('drivers')
-        .select('id')
+        .select('id, users!inner(role)')
         .eq('is_approved', false)
-        .eq('is_blocked', false);
+        .eq('is_blocked', false)
+        .not('users.role', 'eq', 'admin');
     return rows.length;
   }
 
@@ -323,8 +329,9 @@ class DashboardRepository {
     try {
       final approvals = await _client
           .from('drivers')
-          .select('id, category, created_at, users!inner(name, photo_url)')
+          .select('id, category, created_at, users!inner(name, photo_url, role)')
           .eq('is_approved', false)
+          .not('users.role', 'eq', 'admin')
           .order('created_at', ascending: false)
           .limit(4);
       for (final d in approvals) {
@@ -398,9 +405,10 @@ class DashboardRepository {
   Future<List<Map<String, dynamic>>> getTopDrivers({int limit = 5}) async {
     return await _client
         .from('drivers')
-        .select('id, total_trips, rating, users!inner(name, photo_url)')
+        .select('id, total_trips, rating, users!inner(name, photo_url, role)')
         .eq('is_approved', true)
         .eq('is_blocked', false)
+        .not('users.role', 'eq', 'admin')
         .order('total_trips', ascending: false)
         .limit(limit);
   }
@@ -416,9 +424,11 @@ class DashboardRepository {
     // 1. Buscar motoristas aprovados
     var driverQuery = _client
         .from('drivers')
-        .select('id, rating, category, is_approved, is_blocked, users!inner(name, photo_url)')
+        .select('id, rating, category, is_approved, is_blocked, users!inner(name, photo_url, role)')
         .eq('is_approved', true)
-        .eq('is_blocked', false);
+        .eq('is_blocked', false)
+        // Ranking não inclui a conta admin.
+        .not('users.role', 'eq', 'admin');
 
     if (category != null && category != 'all') {
       driverQuery = driverQuery.eq('category', category);

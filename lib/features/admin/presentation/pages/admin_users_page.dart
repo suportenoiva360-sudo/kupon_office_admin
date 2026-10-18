@@ -46,6 +46,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             'id, name, email, phone, photo_url, created_at, role, '
             'province_id, is_blocked',
           )
+          // Admin não aparece como utilizador — é só admin.
+          .neq('role', 'admin')
           .order('created_at', ascending: false)
           .limit(500);
 
@@ -2032,7 +2034,10 @@ class _SendNotificationDialogState extends State<_SendNotificationDialog> {
     setState(() => _sending = true);
     try {
       if (widget.broadcast) {
-        var query = _db.from('users').select('id')..limit(1000);
+        var query = _db.from('users').select('id')
+          ..limit(1000)
+          // Broadcast nunca chega à conta admin.
+          ..neq('role', 'admin');
         if (_broadcastRole != null) {
           query = query.eq('role', _broadcastRole!);
         }

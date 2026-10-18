@@ -262,6 +262,8 @@ class AdminActivityCenter extends ChangeNotifier {
           .from('drivers')
           .select('id,users!inner(name),created_at')
           .eq('is_approved', false)
+          // A conta admin não entra no feed — é apenas admin.
+          .not('users.role', 'eq', 'admin')
           .order('created_at', ascending: false)
           .limit(_limit);
       for (final row in rows) {
@@ -544,6 +546,21 @@ class AdminActivityCenter extends ChangeNotifier {
 
   void _onDriverChange(PostgresChangePayload payload) {
     final row = payload.newRecord;
+    // Realtime não tras o join — consulta o papel do utilizador e ignora
+    // registos da conta admin (admins só são admins).
+    final userId = row['user_id']?.toString() ?? '';
+    if (userId.isNotEmpty) {
+      _client
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle()
+          .then((u) {
+        if (u?['role'] == 'admin') {
+          _remove('driver:${row['id']}');
+        }
+      });
+    }
     final id = 'driver:${row['id']}';
     if (row['is_approved'] == true) {
       _remove(id);
