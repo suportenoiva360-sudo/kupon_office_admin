@@ -1,0 +1,21 @@
+icons_launcher:
+  image_path: "assets/images/icon.png"
+  platforms:
+    android:
+      enable: false
+    ios:
+      enable: false
+    web:
+      enable: true
+      image_path: "assets/images/icon.png"
+      background_color: "#E5E2E1"
+      theme_color: "#E5E2E1"
+    windows:
+      enable: true
+      image_path: "assets/images/icon.png"
+    macos:
+      enable: true
+      image_path: "assets/images/icon.png"
+    linux:
+      enable: true
+      image_path: "assets/images/icon.png"

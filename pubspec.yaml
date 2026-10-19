@@ -30,6 +30,7 @@ dependencies:
   intl: ^0.20.3
 
 dev_dependencies:
+  icons_launcher: 3.1.0
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
