@@ -25,6 +25,11 @@ class AdminShell extends StatefulWidget {
 class _AdminShellState extends State<AdminShell> {
   StatefulNavigationShell get _nav => widget.navigationShell;
 
+  /// Índice do branch `/sos` no router (último da StatefulShellRoute).
+  /// Manter sincronizado com `branches` em app_router.dart — se
+  /// deslocar, os botões a seguir abrem a página errada.
+  static const int _sosIndex = 10;
+
   static const _destinations = [
     _NavDestination(
       icon: Icons.dashboard_outlined,
@@ -192,7 +197,7 @@ class _AdminShellState extends State<AdminShell> {
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () =>
-                      _nav.goBranch(9, initialLocation: _nav.currentIndex == 9),
+                      _nav.goBranch(_sosIndex, initialLocation: _nav.currentIndex == _sosIndex),
                   child: Container(
                     height: 48,
                     width: double.infinity,
@@ -200,7 +205,7 @@ class _AdminShellState extends State<AdminShell> {
                       color: AppTheme.errorContainer,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: _nav.currentIndex == 9
+                        color: _nav.currentIndex == _sosIndex
                             ? Colors.white.withValues(alpha: 0.7)
                             : Colors.transparent,
                         width: 2,
