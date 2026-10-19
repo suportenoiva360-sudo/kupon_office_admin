@@ -12,6 +12,7 @@ import 'package:kupon_office_admin/core/routes/app_router.dart'
     show invalidateAdminCache;
 import 'package:kupon_office_admin/features/admin/application/admin_activity_center.dart';
 import 'package:kupon_office_admin/features/admin/support/admin_system_notifications.dart';
+import 'package:kupon_office_admin/features/admin/support/admin_alert_sounds.dart';
 
 class AdminShell extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -111,6 +112,13 @@ class _AdminShellState extends State<AdminShell> {
         body: item.subtitle,
         tag: item.id,
       );
+    }
+    // Alerta sonoro: SOS urgente e nova corrida (pedido de viagem).
+    switch (item.kind) {
+      case 'sos':
+        AdminAlertSounds.playSos();
+      case 'trip':
+        AdminAlertSounds.playNewRequest();
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
