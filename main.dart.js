@@ -145864,7 +145864,7 @@ q=t.p
 p=A.jN(!1,new A.aF(B.a8m,A.M(A.b([A.bB4("assets/icons/kupon-logo.svg",50,50),B.b8,A.aa(A.b([A.o("KUPON",j,j,j,j,A.m().$4$color$fontSize$fontWeight$letterSpacing(B.z,22,B.ac,-0.3),j,j,j),A.o("CENTRO DE OPERA\xc7\xd5ES",j,j,j,j,A.m().$4$color$fontSize$fontWeight$letterSpacing(B.u.p(0.7),12,B.a8,-0.3),j,j,j)],q),B.R,B.q,B.r)],q),B.w,B.q,B.r,0),j),!0,B.aO,!0,!0)
 o=A.ag(A.a4l(j,B.S,B.bdy,new A.b3M(k),10,B.ln,j,!1),1)
 n=A.C(8)
-m=A.ao(k.a.c.f===9?B.Y.p(0.7):B.a4,2)
+m=A.ao(k.a.c.f===10?B.Y.p(0.7):B.a4,2)
 l=A.b([new A.bw(0,B.ak,B.bu.p(0.3),B.d0,12)],t.V)
 l=A.cw(j,A.Q(j,A.d0(A.M(A.b([B.abw,B.ad,A.o("EMERGENCIA",j,j,j,j,A.m().$4$color$fontSize$fontWeight$letterSpacing(B.Y,10,B.I,0.5),j,j,j)],q),B.w,B.bI,B.r,0),j,j),B.x,j,j,new A.R(B.bu,j,m,n,l,j,j,B.C),j,48,j,j,j,j,1/0),B.S,!1,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j,j,new A.b3N(k),j,j,j,j,j,j,!1,B.aJ)
 n=A.ao(B.z,1.5)
@@ -145970,7 +145970,7 @@ $2(a,b){return this.a.aBR(b)},
 $S:32}
 A.b3N.prototype={
 $0(){var s=this.a.a.c
-return s.a3h(9,s.f===9)},
+return s.a3h(10,s.f===10)},
 $S:0}
 A.b3O.prototype={
 $3(a,b,c){var s=null
