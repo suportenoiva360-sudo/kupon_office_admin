@@ -798,6 +798,7 @@ class _AdminDriversPageState extends State<AdminDriversPage>
     final category = d['category'] as String? ?? '–';
     final rating = (d['rating'] as num?)?.toStringAsFixed(1) ?? '–';
     final totalTrips = d['total_trips'] as int? ?? 0;
+    final freeRides = d['free_trips_remaining'] as int? ?? 0;
     final isOnline = d['is_online'] as bool? ?? false;
     final isApproved = d['is_approved'] as bool? ?? false;
     final driverId = d['id'] as String;
@@ -977,11 +978,13 @@ class _AdminDriversPageState extends State<AdminDriversPage>
             ),
           ),
 
-          // Total trips
+          // Total trips + grátis restantes
           Expanded(
-            flex: 1,
+            flex: 2,
             child: Text(
-              '$totalTrips',
+              freeRides > 0 ? '$totalTrips · $freeRides grátis' : '$totalTrips',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 13,
                 color: AppTheme.onSurface,
@@ -1130,6 +1133,13 @@ class _AdminDriversPageState extends State<AdminDriversPage>
     final category = d['category'] as String? ?? '–';
     final rating = (d['rating'] as num?)?.toStringAsFixed(1) ?? '–';
     final totalTrips = d['total_trips'] as int? ?? 0;
+    final freeRides = d['free_trips_remaining'] as int? ?? 0;
+    final packageId = d['package_id'] as String?;
+    final packageExpires = DateTime.tryParse('${d['package_expires'] ?? ''}');
+    final packageActive = packageId != null &&
+        packageId.isNotEmpty &&
+        (packageExpires == null || packageExpires.isAfter(DateTime.now()));
+    final packageUsed = d['package_trips_used'] as int? ?? 0;
     final isOnline = d['is_online'] as bool? ?? false;
     final isApproved = d['is_approved'] as bool? ?? false;
     final status = _resolveStatus(d);
@@ -1303,6 +1313,18 @@ class _AdminDriversPageState extends State<AdminDriversPage>
                         icon: Icons.category_rounded,
                         text: _categoryLabel(category),
                       ),
+                      if (freeRides > 0)
+                        _cardMeta(
+                          icon: Icons.card_giftcard_rounded,
+                          text: '$freeRides grátis',
+                          color: const Color(0xFF4CAF88),
+                        ),
+                      if (packageActive)
+                        _cardMeta(
+                          icon: Icons.inventory_2_rounded,
+                          text: '$packageUsed do pacote',
+                          color: const Color(0xFFE0A93E),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 10),

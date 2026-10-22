@@ -4,6 +4,8 @@ import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/app/widgets/profile_cover_header.dart';
 import 'package:kupon_office_admin/features/admin/presentation/widgets/admin_driver_documents.dart';
+import 'package:kupon_office_admin/repositories/driver_repository.dart';
+import 'package:kupon_office_admin/repositories/dashboard_repository.dart' show formatNumber;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminDriverDetailPage extends StatefulWidget {
@@ -22,6 +24,7 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
   bool _loadFailed = false;
   Map<String, dynamic>? _driver;
   List<Map<String, dynamic>> _trips = [];
+  Map<String, dynamic>? _stats;
   int _selectedTab = 0;
 
   /// `drivers.documents_url` (mapa `{tipo: url}` gravado no registo).
@@ -55,10 +58,15 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
           .order('created_at', ascending: false)
           .limit(20);
 
+      // Totais de carreira (viagens/ganhos/avaliação média) sobre TODAS
+      // as viagens concluídas — os "Ganhos" deixam de ser o custo "0 Kz".
+      final stats = await DriverRepository().getDriverStats(widget.driverId);
+
       if (mounted) {
         setState(() {
           _driver = driver;
           _trips = List<Map<String, dynamic>>.from(trips as List);
+          _stats = stats;
           _loading = false;
           _loadFailed = false;
         });
@@ -170,6 +178,7 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
     final isOnline = _driver!['is_online'] as bool? ?? false;
     final rating = (_driver!['rating'] as num?)?.toStringAsFixed(1) ?? '–';
     final totalTrips = _driver!['total_trips'] as int? ?? 0;
+    final freeRides = _driver!['free_trips_remaining'] as int? ?? 0;
     final category = _driver!['category'] as String? ?? '–';
     final model = _driver!['vehicle_model'] as String? ?? '–';
     final plate = _driver!['vehicle_plate'] as String? ?? '–';
@@ -223,6 +232,10 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
                       ProfileMetaItem(
                         icon: Icons.directions_car_rounded,
                         text: '$totalTrips viagens',
+                      ),
+                      ProfileMetaItem(
+                        icon: Icons.card_giftcard_rounded,
+                        text: '$freeRides grátis',
                       ),
                       ProfileMetaItem(
                         icon: Icons.category_rounded,
@@ -323,6 +336,15 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
   }
 
   Widget _buildStatsRow(String rating, int totalTrips) {
+    final freeRides = _driver?['free_trips_remaining'] as int? ?? 0;
+    final packageId = _driver?['package_id'] as String?;
+    final packageExpires = DateTime.tryParse('${_driver?['package_expires'] ?? ''}');
+    final packageActive = packageId != null &&
+        packageId.isNotEmpty &&
+        (packageExpires == null || packageExpires.isAfter(DateTime.now()));
+    final packageUsed = _driver?['package_trips_used'] as int? ?? 0;
+    final totalEarnings = _stats?['total_earnings'] as int? ?? 0;
+
     return Row(
       children: [
         _statCard(
@@ -340,11 +362,27 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
         ),
         const SizedBox(width: 12),
         _statCard(
+          Icons.card_giftcard_rounded,
+          '$freeRides',
+          'Grátis restantes',
+          const Color(0xFF4CAF88),
+        ),
+        const SizedBox(width: 12),
+        _statCard(
           Icons.account_balance_wallet_rounded,
-          '0 Kz',
+          'Kz ${formatNumber(totalEarnings)}',
           'Ganhos',
           const Color(0xFF4CAF88),
         ),
+        if (packageActive) ...[
+          const SizedBox(width: 12),
+          _statCard(
+            Icons.inventory_2_rounded,
+            '$packageUsed',
+            'Usadas do pacote',
+            const Color(0xFFE0A93E),
+          ),
+        ],
       ],
     );
   }
