@@ -23,6 +23,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   // 2.4 — aviso sonoro de fim de viagem (kupon_settings).
   final TextEditingController _rideEndAnnounceCtrl = TextEditingController();
   final TextEditingController _rideEndRadiusCtrl = TextEditingController();
+  // [2.5] finos da cadeia (kupon_settings).
+  final TextEditingController _chainRadiusCtrl = TextEditingController();
+  final TextEditingController _chainAgeCtrl = TextEditingController();
+  final TextEditingController _chainWindowCtrl = TextEditingController();
   // Última alteração de cada categoria (tariffs.updated_at).
   final _tariffUpdatedAt = <String, DateTime?>{};
   // id(uuid) de cada tarifa — mapeia row_key do histórico -> categoria.
@@ -72,6 +76,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     }
     _referralRewardCtrl.dispose();
     _rideEndAnnounceCtrl.dispose();
+    _rideEndRadiusCtrl.dispose();
+    _chainRadiusCtrl.dispose();
+    _chainAgeCtrl.dispose();
+    _chainWindowCtrl.dispose();
     _rideEndRadiusCtrl.dispose();
     super.dispose();
   }
@@ -128,6 +136,41 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         _rideEndAnnounceCtrl.text = msg;
         _rideEndRadiusCtrl.text = radius;
       } catch (_) {}
+
+      // [2.5] finos da cadeia (defaults = valores em produção).
+      try {
+        final chainRows = await _db
+            .from('kupon_settings')
+            .select('key, value')
+            .inFilter('key', [
+              'chain_max_pickup_km',
+              'chain_max_trip_age_min',
+              'chain_reserve_seconds',
+            ]);
+        String km = '3';
+        String ageMin = '10';
+        String windowS = '90';
+        for (final row in (chainRows as List)) {
+          final key = row['key'] as String?;
+          final value = row['value'];
+          final txt = value == null ? '' : '$value'.trim();
+          switch (key) {
+            case 'chain_max_pickup_km':
+              if (txt.isNotEmpty) km = txt;
+            case 'chain_max_trip_age_min':
+              if (txt.isNotEmpty) ageMin = txt;
+            case 'chain_reserve_seconds':
+              if (txt.isNotEmpty) windowS = txt;
+          }
+        }
+        _chainRadiusCtrl.text = km;
+        _chainAgeCtrl.text = ageMin;
+        _chainWindowCtrl.text = windowS;
+      } catch (_) {
+        _chainRadiusCtrl.text = '3';
+        _chainAgeCtrl.text = '10';
+        _chainWindowCtrl.text = '90';
+      }
 
       for (final row in (tariffRows as List)) {
         final cat = row['category'] as String?;
@@ -254,6 +297,22 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       }, onConflict: 'key').select();
       if ((announceRadiusRows as List).isEmpty) {
         failure.add('raio do aviso de fim de viagem (0 linhas)');
+      }
+
+      // [2.5] finos da cadeia — raio, idade da solicitação e janela.
+      final chainSpecs = <(String, String, TextEditingController)>[
+        ('chain_max_pickup_km', 'raio do embarque da cadeia', _chainRadiusCtrl),
+        ('chain_max_trip_age_min', 'idade máx. da solicitação', _chainAgeCtrl),
+        ('chain_reserve_seconds', 'janela do aceite em cadeia', _chainWindowCtrl),
+      ];
+      for (final (key, label, ctrl) in chainSpecs) {
+        final rows = await _db.from('kupon_settings').upsert({
+          'key': key,
+          'value': _intOf(ctrl),
+        }, onConflict: 'key').select();
+        if ((rows as List).isEmpty) {
+          failure.add('$label da cadeia (0 linhas)');
+        }
       }
 
       for (var i = 0; i < _windowFields.length; i += 5) {
@@ -430,6 +489,14 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       ),
                       const SizedBox(height: 14),
                       _buildRideEndAnnounceCard(),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Pedidos em Cadeia',
+                        'Raio do embarque do próximo passageiro, idade máxima da solicitação e janela que o motorista tem para aceitar em cadeia (configurações chain_max_pickup_km / chain_max_trip_age_min / chain_reserve_seconds).',
+                        Icons.link_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildChainCard(),
                       const SizedBox(height: 12),
                       _buildSaveButton(),
                       const SizedBox(height: 28),
@@ -594,6 +661,73 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// [2.5] finos da cadeia — 3 números editáveis.
+  Widget _buildChainCard() {
+    Widget field(String label, String suffix, TextEditingController ctrl) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl,
+              keyboardType: const TextInputType.numberWithOptions(),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.onSurface,
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                suffixText: suffix,
+                suffixStyle: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+                filled: true,
+                fillColor: AppTheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppTheme.surfaceContainerHighest,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceContainerHighest),
+      ),
+      child: Row(
+        children: [
+          field('RAIO DO EMBARQUE', 'km', _chainRadiusCtrl),
+          const SizedBox(width: 12),
+          field('IDADE MÁX.', 'min', _chainAgeCtrl),
+          const SizedBox(width: 12),
+          field('JANELA DO ACEITE', 's', _chainWindowCtrl),
         ],
       ),
     );
