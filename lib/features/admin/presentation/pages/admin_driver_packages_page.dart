@@ -963,26 +963,32 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
       ),
       const SizedBox(height: 16),
       _settingsGroupCard(
-        title: 'Cotas de Fidelidade e Resgate de Viagens',
+        title: 'Cotas de Fidelidade — Acumulação e Pagamento',
         icon: Icons.loyalty_rounded,
         items: [
           _settingItem(
             'cota_per_trip',
             'Cotas por viagem concluída',
-            'Pontuação acumulada por cada viagem finalizada.',
+            'Pontuação acumulada por cada viagem finalizada. Grátis/desconto 100%/passe não geram.',
             suffix: 'cotas',
           ),
           _settingItem(
-            'cota_redeem_size',
-            'Cotas por resgate de viagem',
-            'Quantidade de cotas necessárias para resgatar 1 corrida grátis.',
-            suffix: 'cotas',
+            'cota_cost_bands',
+            'Faixas de custo em cotas (JSON)',
+            'Cotação de corridas pagas em cotas: até 3 km→50; 3–5 km→70; >5 km→70+10/km; cap perto do aeroporto→80+5/km (cap 90). Ex: [{"max_km":3,"cost":50},{"max_km":5,"cost":70},{"max_km":7,"cost":90},…]. Aplica-se a passageiro e 3.º.',
+            isJson: true,
           ),
           _settingItem(
-            'cota_redeem_max_value',
-            'Valor máximo da viagem grátis',
-            'Tarifa máxima coberta pelo resgate da viagem.',
-            suffix: 'Kup',
+            'cota_cost_cap',
+            'Faixa de cap (aeroporto) a partir de (km)',
+            'Distância a partir da qual vale a faixa do cap (80+5/km, cap 90). 0 desativa o cap.',
+            suffix: 'km',
+          ),
+          _settingItem(
+            'cota_to_kup_rate',
+            'Taxa de conversão cota→Kup (fallback)',
+            'Valor do Kup por cota no fallback da conclusão: 1 cota = 40 Kup.',
+            suffix: 'Kup/cota',
           ),
           _settingItem(
             'cota_validity_months',

@@ -1769,17 +1769,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
             options: MapOptions(
               initialCenter: _luanda,
               initialZoom: 12.5,
+              minZoom: 3.0,
+              maxZoom: 18.5,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
               ),
               onTap: (_, _) => setState(() => _hoveredDriver = null),
             ),
             children: [
-              TileLayer(
-                urlTemplate: mapStyle.urlTemplate,
-                userAgentPackageName: 'com.kupon.admin',
-                maxZoom: 19,
-              ),
+              mapStyle.buildTileLayer(),
               // Driver markers
               MarkerLayer(
                 markers: _liveDrivers.map((d) {

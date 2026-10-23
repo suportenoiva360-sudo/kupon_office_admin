@@ -166,6 +166,7 @@ class _AdminMapPageState extends State<AdminMapPage>
   void _animateTo(LatLng destLatLng, double destZoom) {
     final startLatLng = _mapController.camera.center;
     final startZoom = _mapController.camera.zoom;
+    final targetZoom = destZoom.clamp(3.0, 18.5);
 
     final latTween = Tween<double>(
       begin: startLatLng.latitude,
@@ -175,7 +176,7 @@ class _AdminMapPageState extends State<AdminMapPage>
       begin: startLatLng.longitude,
       end: destLatLng.longitude,
     );
-    final zoomTween = Tween<double>(begin: startZoom, end: destZoom);
+    final zoomTween = Tween<double>(begin: startZoom, end: targetZoom);
 
     final curved = CurvedAnimation(
       parent: _camAnim,
@@ -256,7 +257,7 @@ class _AdminMapPageState extends State<AdminMapPage>
         final userName = (userMap?['name'] as String?)?.trim();
         final name = (userName != null && userName.isNotEmpty)
             ? userName
-            : ((d['full_name'] as String?)?.trim() ?? 'Motorista');
+            : 'Motorista';
 
         final phone = userMap?['phone'] as String?;
         final email = userMap?['email'] as String?;
@@ -385,10 +386,14 @@ class _AdminMapPageState extends State<AdminMapPage>
       if (ids.isNotEmpty) {
         final ds = await client
             .from('drivers')
-            .select('id, full_name')
+            .select('id, users!inner(name)')
             .inFilter('id', ids.toList());
         for (final d in (ds as List)) {
-          names[d['id'] as String] = (d['full_name'] as String?) ?? 'Motorista';
+          final userMap = d['users'] as Map<String, dynamic>?;
+          names[d['id'] as String] =
+              (userMap?['name'] as String?)?.trim().isNotEmpty == true
+                  ? (userMap!['name'] as String).trim()
+                  : 'Motorista';
         }
       }
 
@@ -657,7 +662,11 @@ class _AdminMapPageState extends State<AdminMapPage>
                   if (_selectedDriver?.id == id) _selectedDriver = updated;
                 });
               } else if (isOnline != false && isApproved != false && isBlocked != true) {
-                final name = (rec['full_name'] as String?) ?? 'Motorista';
+                // Realtime payload não inclui join de users; usa o nome já
+                // carregado em _drivers (se já existia) ou faz lookup lazy.
+                final existingName =
+                    idx != -1 ? _drivers[idx].name : null;
+                final name = existingName ?? 'Motorista';
                 final marker = _DriverMarker(
                   id: id,
                   name: name,
@@ -808,14 +817,12 @@ class _AdminMapPageState extends State<AdminMapPage>
             options: MapOptions(
               initialCenter: _luanda,
               initialZoom: 13,
+              minZoom: 3.0,
+              maxZoom: 18.5,
               onTap: (_, _) => setState(() => _selectedDriver = null),
             ),
             children: [
-              TileLayer(
-                urlTemplate: mapStyle.urlTemplate,
-                userAgentPackageName: 'com.kupon.admin',
-                maxZoom: 19,
-              ),
+              mapStyle.buildTileLayer(),
               MarkerLayer(markers: _buildMarkers()),
             ],
           ),
@@ -917,7 +924,10 @@ class _AdminMapPageState extends State<AdminMapPage>
   // ─────────────────────────────────────────
 
   List<Marker> _buildMarkers() {
-    return _filtered.map((d) {
+    // Apenas desenha no mapa os motoristas com coordenadas GPS reais válidas.
+    // Motoristas sem GPS continuam na contagem e listas, mas não são jogados
+    // no centro da província falsamente.
+    return _filtered.where((d) => d.hasGps).map((d) {
       final isSelected = _selectedDriver?.id == d.id;
       final isMoto = d.category == 'moto';
       final hasGps = d.hasGps;
@@ -2035,10 +2045,15 @@ class _AdminMapPageState extends State<AdminMapPage>
         children: [
           _zoomButton(
             icon: Icons.add_rounded,
-            onTap: () => _mapController.move(
-              _mapController.camera.center,
-              _mapController.camera.zoom + 1,
-            ),
+            onTap: () {
+              final z = _mapController.camera.zoom;
+              if (z < 18.5) {
+                _mapController.move(
+                  _mapController.camera.center,
+                  (z + 1).clamp(3.0, 18.5),
+                );
+              }
+            },
             isTop: true,
           ),
           Divider(
@@ -2047,10 +2062,15 @@ class _AdminMapPageState extends State<AdminMapPage>
           ),
           _zoomButton(
             icon: Icons.remove_rounded,
-            onTap: () => _mapController.move(
-              _mapController.camera.center,
-              _mapController.camera.zoom - 1,
-            ),
+            onTap: () {
+              final z = _mapController.camera.zoom;
+              if (z > 3.0) {
+                _mapController.move(
+                  _mapController.camera.center,
+                  (z - 1).clamp(3.0, 18.5),
+                );
+              }
+            },
           ),
           Divider(
             height: 1,
