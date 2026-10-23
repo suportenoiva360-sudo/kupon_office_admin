@@ -17,6 +17,7 @@ import 'package:kupon_office_admin/features/admin/presentation/pages/admin_plano
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_sos_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_configuracoes_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_map_page.dart';
+import 'package:kupon_office_admin/features/admin/presentation/pages/admin_cancelamentos_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -203,6 +204,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => AdminDriverDetailPage(
         driverId: state.pathParameters['id']!,
       ),
+    ),
+    GoRoute(
+      path: '/cancelamentos',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AdminCancelamentosPage(),
     ),
   ],
 );

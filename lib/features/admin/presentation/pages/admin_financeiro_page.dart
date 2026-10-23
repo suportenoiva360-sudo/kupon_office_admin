@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
@@ -354,6 +355,21 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Cancelamentos e dívidas',
+          onPressed: () => context.push('/cancelamentos'),
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: AppTheme.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: const Icon(Icons.cancel_presentation_rounded,
+                color: Color(0xFFE5E2E1), size: 18),
           ),
         ),
         IconButton(

@@ -27,6 +27,16 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   final TextEditingController _chainRadiusCtrl = TextEditingController();
   final TextEditingController _chainAgeCtrl = TextEditingController();
   final TextEditingController _chainWindowCtrl = TextEditingController();
+  // Cancelamentos [fase 4] — faixas + atrasos + revisão/contestação.
+  final TextEditingController _capFee1Ctrl = TextEditingController();
+  final TextEditingController _capFee2Ctrl = TextEditingController();
+  final TextEditingController _capFee3Ctrl = TextEditingController();
+  final TextEditingController _capFee4Ctrl = TextEditingController();
+  final TextEditingController _capWarnMinCtrl = TextEditingController();
+  final TextEditingController _capFreeMinCtrl = TextEditingController();
+  final TextEditingController _capStallMinCtrl = TextEditingController();
+  final TextEditingController _capRevThreshCtrl = TextEditingController();
+  final TextEditingController _capDisputeDaysCtrl = TextEditingController();
   // Última alteração de cada categoria (tariffs.updated_at).
   final _tariffUpdatedAt = <String, DateTime?>{};
   // id(uuid) de cada tarifa — mapeia row_key do histórico -> categoria.
@@ -172,6 +182,65 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         _chainWindowCtrl.text = '90';
       }
 
+      // Cancelamentos [fase 4] — faixas de taxa + atrasos + revisão/contestação
+      try {
+        final capRows = await _db
+            .from('kupon_settings')
+            .select('key, value')
+            .inFilter('key', [
+              'cancel_fee_bands',
+              'cancel_delay_warn_min',
+              'cancel_delay_free_min',
+              'cancel_stall_min',
+              'cancel_debt_review_threshold',
+              'cancel_dispute_paid_window_days',
+            ]);
+        List fees = const [0, 100, 200, 300];
+        String warn = '5', free = '10', stall = '3', rev = '3', days = '7';
+        for (final row in (capRows as List)) {
+          final key = row['key'] as String?;
+          final value = row['value'];
+          final txt = value == null ? '' : '$value'.trim();
+          switch (key) {
+            case 'cancel_fee_bands':
+              if (value is List && value.isNotEmpty) fees = value;
+            case 'cancel_delay_warn_min':
+              if (txt.isNotEmpty) warn = txt;
+            case 'cancel_delay_free_min':
+              if (txt.isNotEmpty) free = txt;
+            case 'cancel_stall_min':
+              if (txt.isNotEmpty) stall = txt;
+            case 'cancel_debt_review_threshold':
+              if (txt.isNotEmpty) rev = txt;
+            case 'cancel_dispute_paid_window_days':
+              if (txt.isNotEmpty) days = txt;
+          }
+        }
+        // bands [[taxa, kmMax], ...] — kmMax 1/3/5/null
+        String bandFee(int i) {
+          if (fees.length > i) {
+            final b = fees[i];
+            if (b is List && b.isNotEmpty) {
+              return '${b[0] ?? 0}'.trim();
+            }
+            return '$b'.trim();
+          }
+          return '0';
+        }
+
+        setState(() {
+          _capFee1Ctrl.text = bandFee(0);
+          _capFee2Ctrl.text = bandFee(1);
+          _capFee3Ctrl.text = bandFee(2);
+          _capFee4Ctrl.text = bandFee(3);
+          _capWarnMinCtrl.text = warn;
+          _capFreeMinCtrl.text = free;
+          _capStallMinCtrl.text = stall;
+          _capRevThreshCtrl.text = rev;
+          _capDisputeDaysCtrl.text = days;
+        });
+      } catch (_) {}
+
       for (final row in (tariffRows as List)) {
         final cat = row['category'] as String?;
         if (cat == null || !_fares.containsKey(cat)) continue;
@@ -313,6 +382,36 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         if ((rows as List).isEmpty) {
           failure.add('$label da cadeia (0 linhas)');
         }
+      }
+
+      // Cancelamentos [fase 4] — faixas + limites.
+      final capInts = <(String, String, TextEditingController)>[
+        ('cancel_delay_warn_min', 'aviso de atraso', _capWarnMinCtrl),
+        ('cancel_delay_free_min', 'atraso livre', _capFreeMinCtrl),
+        ('cancel_stall_min', 'sem progresso', _capStallMinCtrl),
+        ('cancel_debt_review_threshold', 'limiar de revisão', _capRevThreshCtrl),
+        ('cancel_dispute_paid_window_days', 'janela da contestação', _capDisputeDaysCtrl),
+      ];
+      for (final (key, label, ctrl) in capInts) {
+        final rows = await _db.from('kupon_settings').upsert({
+          'key': key,
+          'value': _intOf(ctrl),
+        }, onConflict: 'key').select();
+        if ((rows as List).isEmpty) {
+          failure.add('$label do cancelamento (0 linhas)');
+        }
+      }
+      final bandRows = await _db.from('kupon_settings').upsert({
+        'key': 'cancel_fee_bands',
+        'value': [
+          [_intOf(_capFee1Ctrl), 1],
+          [_intOf(_capFee2Ctrl), 3],
+          [_intOf(_capFee3Ctrl), 5],
+          [_intOf(_capFee4Ctrl), null],
+        ],
+      }, onConflict: 'key').select();
+      if ((bandRows as List).isEmpty) {
+        failure.add('faixas de taxa do cancelamento (0 linhas)');
       }
 
       for (var i = 0; i < _windowFields.length; i += 5) {
@@ -497,6 +596,18 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       ),
                       const SizedBox(height: 14),
                       _buildChainCard(),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Regras de Cancelamento',
+                        'Faixas de taxa por deslocação do motorista, atrasos, '
+                        'deteção de sem progresso e contestação de dívidas '
+                        '(configurações cancel_fee_bands / cancel_delay_* / '
+                        'cancel_stall_min / cancel_debt_review_threshold / '
+                        'cancel_dispute_paid_window_days).',
+                        Icons.cancel_presentation_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildCancelCard(),
                       const SizedBox(height: 12),
                       _buildSaveButton(),
                       const SizedBox(height: 28),
@@ -728,6 +839,93 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
           field('IDADE MÁX.', 'min', _chainAgeCtrl),
           const SizedBox(width: 12),
           field('JANELA DO ACEITE', 's', _chainWindowCtrl),
+        ],
+      ),
+    );
+  }
+
+  /// Cancelamentos [fase 4] — faixas de taxa (4) + limites (5).
+  Widget _buildCancelCard() {
+    Widget field(String label, String suffix, TextEditingController ctrl) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl,
+              keyboardType: const TextInputType.numberWithOptions(),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.onSurface,
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                suffixText: suffix,
+                suffixStyle: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+                filled: true,
+                fillColor: AppTheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppTheme.surfaceContainerHighest,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceContainerHighest),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              field('TAXA < 1 KM', 'Kz', _capFee1Ctrl),
+              const SizedBox(width: 12),
+              field('TAXA 1–3 KM', 'Kz', _capFee2Ctrl),
+              const SizedBox(width: 12),
+              field('TAXA 3–5 KM', 'Kz', _capFee3Ctrl),
+              const SizedBox(width: 12),
+              field('TAXA 5+ KM', 'Kz', _capFee4Ctrl),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              field('AVISO ATRASO', 'min', _capWarnMinCtrl),
+              const SizedBox(width: 12),
+              field('ATRASO LIVRE', 'min', _capFreeMinCtrl),
+              const SizedBox(width: 12),
+              field('SEM PROGRESSO', 'min', _capStallMinCtrl),
+              const SizedBox(width: 12),
+              field('REVISÃO (PEND)', 'u', _capRevThreshCtrl),
+              const SizedBox(width: 12),
+              field('CONTESTAR DIAS', 'd', _capDisputeDaysCtrl),
+            ],
+          ),
         ],
       ),
     );
