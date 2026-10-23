@@ -205,6 +205,7 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
       );
       if (!mounted) return;
       _toast('Cobrança revertida.');
+      setState(() => _busy = false);
       await _load();
     } catch (e) {
       if (!mounted) return;
