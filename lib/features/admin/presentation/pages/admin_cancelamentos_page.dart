@@ -25,6 +25,8 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
   List<Map<String, dynamic>> _debts = [];
   List<Map<String, dynamic>> _comps = [];
   List<Map<String, dynamic>> _log = [];
+  // Fila de "contas em revisão" (>3 dívidas pendentes, cancel_debt_review_threshold).
+  List<Map<String, dynamic>> _review = [];
 
   @override
   void initState() {
@@ -50,11 +52,19 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
           .select()
           .order('created_at', ascending: false)
           .limit(100);
+      List<Map<String, dynamic>> review = [];
+      try {
+        final q = await _db.rpc('cancellation_review_queue');
+        if (q is List) {
+          review = q.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _debts = List<Map<String, dynamic>>.from(debts);
         _comps = List<Map<String, dynamic>>.from(comps);
         _log = List<Map<String, dynamic>>.from(log);
+        _review = review;
         _loading = false;
       });
     } catch (e) {
@@ -214,6 +224,66 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
     }
   }
 
+  Future<void> _rejectContest(Map<String, dynamic> debt) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceContainerHigh,
+        title: Text(
+          'Rejeitar contestação',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFFE5E2E1),
+          ),
+        ),
+        content: Text(
+          'A contestação é considerada improcedente: a dívida volta ao '
+          'estado anterior (pendente/paga), fica cobrável e a compensação '
+          'do motorista sai de análise.',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 13,
+            color: const Color(0xFFE2BFB0),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Manter contestação'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryContainer,
+              foregroundColor: const Color(0xFF050505),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Rejeitar',
+              style: GoogleFonts.spaceGrotesk(
+                  fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _busy = true);
+    try {
+      await _db.rpc(
+        'reject_contest',
+        params: {'p_debt_id': debt['id']},
+      );
+      if (!mounted) return;
+      _toast('Contestação rejeitada — dívida restaurada.');
+      setState(() => _busy = false);
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _toast('Erro ao rejeitar: $e', error: true);
+    }
+  }
+
   void _toast(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -253,6 +323,12 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                   const SizedBox(height: 16),
                   _buildKpis(contested.length, pending.length, paidCount, compsPending),
                   const SizedBox(height: 24),
+                  if (_review.isNotEmpty) ...[
+                    _buildSectionTitle('Contas em revisão', Icons.rule_rounded),
+                    const SizedBox(height: 8),
+                    ..._review.map(_buildReviewRow),
+                    const SizedBox(height: 24),
+                  ],
                   if (contested.isNotEmpty) ...[
                     _buildSectionTitle('Contestações em aberto', Icons.flag_rounded),
                     const SizedBox(height: 8),
@@ -287,6 +363,76 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildReviewRow(Map<String, dynamic> r) {
+    final name = r['name'] as String? ?? '—';
+    final phone = r['phone'] as String? ?? '';
+    final pend = r['pending_count'] as int? ?? 0;
+    final tot = r['pending_total'] as int? ?? 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFFFB74D).withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFE5E2E1),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$pend dívidas pendentes · ${_formatKz(tot)} Kz'
+                  '${phone.isEmpty ? '' : ' · $phone'}',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12,
+                    color: const Color(0xFFE2BFB0),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFB74D).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Em revisão',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFFFB74D),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatKz(int v) {
+    return '$v'.replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
     );
   }
 
@@ -568,6 +714,23 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
             ),
           ),
           const SizedBox(width: 12),
+          if (state == 'contested') ...[
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFE5E2E1),
+                side: const BorderSide(color: Color(0xFF5A4136)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onPressed: _busy ? null : () => _rejectContest(d),
+              child: Text(
+                'Rejeitar',
+                style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           if (state != 'waived')
             FilledButton(
               style: FilledButton.styleFrom(

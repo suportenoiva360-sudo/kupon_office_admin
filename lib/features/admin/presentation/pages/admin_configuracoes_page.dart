@@ -392,26 +392,46 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         ('cancel_debt_review_threshold', 'limiar de revisão', _capRevThreshCtrl),
         ('cancel_dispute_paid_window_days', 'janela da contestação', _capDisputeDaysCtrl),
       ];
+      // Blindagem: vazio e negativos não gravam (evita taxa de 5+ km
+      // zerar-se por engano e taxas negativas).
       for (final (key, label, ctrl) in capInts) {
+        final v = int.tryParse(ctrl.text.trim());
+        if (v == null || v < 0) {
+          failure.add('$label do cancelamento (valor inválido: "${ctrl.text.trim()}")');
+          continue;
+        }
         final rows = await _db.from('kupon_settings').upsert({
           'key': key,
-          'value': _intOf(ctrl),
+          'value': v,
         }, onConflict: 'key').select();
         if ((rows as List).isEmpty) {
           failure.add('$label do cancelamento (0 linhas)');
         }
       }
-      final bandRows = await _db.from('kupon_settings').upsert({
-        'key': 'cancel_fee_bands',
-        'value': [
-          [_intOf(_capFee1Ctrl), 1],
-          [_intOf(_capFee2Ctrl), 3],
-          [_intOf(_capFee3Ctrl), 5],
-          [_intOf(_capFee4Ctrl), null],
-        ],
-      }, onConflict: 'key').select();
-      if ((bandRows as List).isEmpty) {
-        failure.add('faixas de taxa do cancelamento (0 linhas)');
+      final capVals = <int?>[
+        int.tryParse(_capFee1Ctrl.text.trim()),
+        int.tryParse(_capFee2Ctrl.text.trim()),
+        int.tryParse(_capFee3Ctrl.text.trim()),
+        int.tryParse(_capFee4Ctrl.text.trim()),
+      ];
+      if (capVals.every((v) => v != null && v >= 0)) {
+        final bandRows = await _db.from('kupon_settings').upsert({
+          'key': 'cancel_fee_bands',
+          'value': [
+            [capVals[0], 1],
+            [capVals[1], 3],
+            [capVals[2], 5],
+            [capVals[3], null],
+          ],
+        }, onConflict: 'key').select();
+        if ((bandRows as List).isEmpty) {
+          failure.add('faixas de taxa do cancelamento (0 linhas)');
+        }
+      } else {
+        // vazio/negativo/ilegível em qualquer faixa: bloqueia o gravar
+        // (evita taxa de 5+ km zerar-se por engano e taxas negativas).
+        failure.add('faixas de taxa do cancelamento (os 4 campos precisam '
+            'de números ≥ 0; para taxa sem cobrar escreva 0)');
       }
 
       for (var i = 0; i < _windowFields.length; i += 5) {
