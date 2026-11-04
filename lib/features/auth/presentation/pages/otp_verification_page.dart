@@ -7,6 +7,7 @@ import 'package:kupon_office_admin/app/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/core/auth/auth_service.dart';
 import 'package:kupon_office_admin/core/providers/user_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class OtpVerificationPage extends StatefulWidget {
   final String? phone;
@@ -43,8 +44,10 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       await _authService.signInWithPhoneOtp(phone: widget.phone!);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar código: ${e.toString()}')),
+      showAdminSnackBar(
+        context,
+        message: 'Erro ao enviar código: ${e.toString()}',
+        type: AdminSnackType.error,
       );
     }
   }
@@ -76,8 +79,10 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   Future<void> _verifyOtp() async {
     final code = _otpCode;
     if (code.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Digite o código completo')),
+      showAdminSnackBar(
+        context,
+        message: 'Digite o código completo',
+        type: AdminSnackType.warning,
       );
       return;
     }
@@ -104,14 +109,18 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Código inválido')),
+        showAdminSnackBar(
+          context,
+          message: 'Código inválido',
+          type: AdminSnackType.error,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao verificar: ${e.toString()}')),
+      showAdminSnackBar(
+        context,
+        message: 'Erro ao verificar: ${e.toString()}',
+        type: AdminSnackType.error,
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

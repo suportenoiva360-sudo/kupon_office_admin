@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminPromocoesPage extends StatefulWidget {
   const AdminPromocoesPage({super.key});
@@ -878,23 +879,23 @@ class _AdminPromocoesPageState extends State<AdminPromocoesPage> {
               .update({'is_active': action == 'activate'})
               .eq('id', promo['id']);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  action == 'activate' ? 'Cupom ativado.' : 'Cupom pausado.',
-                ),
-                behavior: SnackBarBehavior.floating,
-              ),
+            showAdminSnackBar(
+              context,
+              message: action == 'activate'
+                  ? 'Cupom ativado.'
+                  : 'Cupom pausado.',
+              type: action == 'activate'
+                  ? AdminSnackType.success
+                  : AdminSnackType.warning,
             );
           }
           _load();
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Erro ao atualizar cupom: $e'),
-                backgroundColor: const Color(0xFFCF6679),
-              ),
+            showAdminSnackBar(
+              context,
+              message: 'Erro ao atualizar cupom: $e',
+              type: AdminSnackType.error,
             );
           }
         }
@@ -970,16 +971,13 @@ class _AdminPromocoesPageState extends State<AdminPromocoesPage> {
                 msg.contains('23503') ||
                 msg.contains('FOREIGN KEY');
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    blocked
-                        ? 'Este cupom já foi utilizado e não pode ser excluído. '
-                              'Em vez disso, pode pausá-lo.'
-                        : 'Erro ao excluir cupom: $e',
-                  ),
-                  backgroundColor: const Color(0xFFCF6679),
-                ),
+              showAdminSnackBar(
+                context,
+                message: blocked
+                    ? 'Este cupom já foi utilizado e não pode ser '
+                          'excluído. Em vez disso, pode pausá-lo.'
+                    : 'Erro ao excluir cupom: $e',
+                type: blocked ? AdminSnackType.warning : AdminSnackType.error,
               );
             }
           }
@@ -1012,15 +1010,12 @@ class _AdminPromocoesPageState extends State<AdminPromocoesPage> {
       ),
     );
     if (saved == true && ctx.mounted) {
-      ScaffoldMessenger.of(ctx).showSnackBar(
-        SnackBar(
-          content: Text(
-            promo == null
-                ? 'Cupom criado com sucesso.'
-                : 'Cupom atualizado com sucesso.',
-          ),
-          backgroundColor: const Color(0xFF4CAF88),
-        ),
+      showAdminSnackBar(
+        ctx,
+        message: promo == null
+            ? 'Cupom criado com sucesso.'
+            : 'Cupom atualizado com sucesso.',
+        type: AdminSnackType.success,
       );
     }
     _load();
@@ -1101,31 +1096,26 @@ class _PromoFormDialogState extends State<_PromoFormDialog> {
     final code = _codeCtrl.text.trim();
     final value = int.tryParse(_valueCtrl.text.trim());
     if (name.isEmpty || code.isEmpty || value == null || value <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Preencha o nome, o código e um valor de desconto válido.',
-          ),
-          backgroundColor: Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Preencha o nome, o código e um valor de desconto válido.',
+        type: AdminSnackType.error,
       );
       return;
     }
     if (_startDate == null || _endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Defina a data de início e de fim da validade.'),
-          backgroundColor: Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Defina a data de início e de fim da validade.',
+        type: AdminSnackType.error,
       );
       return;
     }
     if (_endDate!.isBefore(_startDate!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('A data de fim deve ser posterior à de início.'),
-          backgroundColor: Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'A data de fim deve ser posterior à de início.',
+        type: AdminSnackType.error,
       );
       return;
     }
@@ -1169,11 +1159,10 @@ class _PromoFormDialogState extends State<_PromoFormDialog> {
                 msg.contains('23505')
             ? 'Já existe um cupom com este código.'
             : 'Erro ao salvar cupom: $e';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(friendly),
-            backgroundColor: const Color(0xFFCF6679),
-          ),
+        showAdminSnackBar(
+          context,
+          message: friendly,
+          type: AdminSnackType.error,
         );
       }
     }

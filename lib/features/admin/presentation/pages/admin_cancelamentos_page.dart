@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 /// Cancelamentos e dívidas [fase 4]: dívidas de passageiros (taxas de
 /// cancelamento), compensações aos motoristas, contestações em aberto e
@@ -44,7 +45,9 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
           .limit(200);
       final comps = await _db
           .from('driver_compensations')
-          .select('*, drivers(users(name, phone)), trips(pickup_name, destination_name)')
+          .select(
+            '*, drivers(users(name, phone)), trips(pickup_name, destination_name)',
+          )
           .order('created_at', ascending: false)
           .limit(200);
       final log = await _db
@@ -56,7 +59,11 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
       try {
         final q = await _db.rpc('cancellation_review_queue');
         if (q is List) {
-          review = q.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map)).toList();
+          review = q
+              .map<Map<String, dynamic>>(
+                (e) => Map<String, dynamic>.from(e as Map),
+              )
+              .toList();
         }
       } catch (_) {}
       if (!mounted) return;
@@ -190,14 +197,13 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
               backgroundColor: AppTheme.primaryContainer,
               foregroundColor: const Color(0xFF050505),
             ),
-            onPressed: () => Navigator.pop(
-              ctx,
-              controller.text.trim(),
-            ),
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: Text(
               'Reverter',
               style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13, fontWeight: FontWeight.w700),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -260,7 +266,9 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
             child: Text(
               'Rejeitar',
               style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13, fontWeight: FontWeight.w700),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -269,10 +277,7 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
     if (confirm != true) return;
     setState(() => _busy = true);
     try {
-      await _db.rpc(
-        'reject_contest',
-        params: {'p_debt_id': debt['id']},
-      );
+      await _db.rpc('reject_contest', params: {'p_debt_id': debt['id']});
       if (!mounted) return;
       _toast('Contestação rejeitada — dívida restaurada.');
       setState(() => _busy = false);
@@ -286,14 +291,10 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
 
   void _toast(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600, color: const Color(0xFFE5E2E1)),
-        ),
-        backgroundColor: error ? const Color(0xFFCF6679) : AppTheme.primaryContainer,
-      ),
+    showAdminSnackBar(
+      context,
+      message: msg,
+      type: error ? AdminSnackType.error : AdminSnackType.success,
     );
   }
 
@@ -321,7 +322,12 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                 children: [
                   _buildHeaderBar(),
                   const SizedBox(height: 16),
-                  _buildKpis(contested.length, pending.length, paidCount, compsPending),
+                  _buildKpis(
+                    contested.length,
+                    pending.length,
+                    paidCount,
+                    compsPending,
+                  ),
                   const SizedBox(height: 24),
                   if (_review.isNotEmpty) ...[
                     _buildSectionTitle('Contas em revisão', Icons.rule_rounded),
@@ -330,7 +336,10 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                     const SizedBox(height: 24),
                   ],
                   if (contested.isNotEmpty) ...[
-                    _buildSectionTitle('Contestações em aberto', Icons.flag_rounded),
+                    _buildSectionTitle(
+                      'Contestações em aberto',
+                      Icons.flag_rounded,
+                    ),
                     const SizedBox(height: 8),
                     ...contested.map(_buildConCard),
                     const SizedBox(height: 24),
@@ -340,20 +349,28 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                   _buildFilters(),
                   const SizedBox(height: 8),
                   if (filtered.isEmpty)
-                    _buildEmpty(filtered.length == _debts.length
-                        ? 'Sem dívidas registadas'
-                        : 'Nada neste filtro')
+                    _buildEmpty(
+                      filtered.length == _debts.length
+                          ? 'Sem dívidas registadas'
+                          : 'Nada neste filtro',
+                    )
                   else
                     ...filtered.map(_buildDebtCard),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Compensações aos motoristas', Icons.payments_rounded),
+                  _buildSectionTitle(
+                    'Compensações aos motoristas',
+                    Icons.payments_rounded,
+                  ),
                   const SizedBox(height: 8),
                   if (_comps.isEmpty)
                     _buildEmpty('Sem compensações registadas')
                   else
                     ..._comps.map(_buildCompCard),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Histórico de decisões', Icons.history_rounded),
+                  _buildSectionTitle(
+                    'Histórico de decisões',
+                    Icons.history_rounded,
+                  ),
                   const SizedBox(height: 8),
                   if (_log.isEmpty)
                     _buildEmpty('Sem decisões registadas')
@@ -446,7 +463,8 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
             color: AppTheme.primaryContainer.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color: AppTheme.primaryContainer.withValues(alpha: 0.3)),
+              color: AppTheme.primaryContainer.withValues(alpha: 0.3),
+            ),
           ),
           child: const Icon(
             Icons.cancel_presentation_rounded,
@@ -488,25 +506,30 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
               color: AppTheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                  color: AppTheme.outlineVariant.withValues(alpha: 0.4)),
+                color: AppTheme.outlineVariant.withValues(alpha: 0.4),
+              ),
             ),
-            child: const Icon(Icons.refresh_rounded,
-                color: Color(0xFFE5E2E1), size: 18),
+            child: const Icon(
+              Icons.refresh_rounded,
+              color: Color(0xFFE5E2E1),
+              size: 18,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildKpis(
-      int contested, int pending, int paid, int compsPending) {
+  Widget _buildKpis(int contested, int pending, int paid, int compsPending) {
     Widget kpi(String label, String value, Color color) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppTheme.surfaceContainer,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: AppTheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,20 +559,36 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
     return Row(
       children: [
         Expanded(
-            child: kpi('Contestações abertas', contested.toString(),
-                const Color(0xFFFF1F48))),
+          child: kpi(
+            'Contestações abertas',
+            contested.toString(),
+            const Color(0xFFFF1F48),
+          ),
+        ),
         const SizedBox(width: 10),
         Expanded(
-            child: kpi('Dívidas pendentes', pending.toString(),
-                const Color(0xFFFFB74D))),
+          child: kpi(
+            'Dívidas pendentes',
+            pending.toString(),
+            const Color(0xFFFFB74D),
+          ),
+        ),
         const SizedBox(width: 10),
         Expanded(
-            child: kpi('Canceladores pagos', paid.toString(),
-                const Color(0xFF4CAF88))),
+          child: kpi(
+            'Canceladores pagos',
+            paid.toString(),
+            const Color(0xFF4CAF88),
+          ),
+        ),
         const SizedBox(width: 10),
         Expanded(
-            child: kpi('Comps. a regularizar', '$compsPending Kz',
-                const Color(0xFFFFB74D))),
+          child: kpi(
+            'Comps. a regularizar',
+            '$compsPending Kz',
+            const Color(0xFFFFB74D),
+          ),
+        ),
       ],
     );
   }
@@ -608,7 +647,9 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
       decoration: BoxDecoration(
         color: AppTheme.surfaceContainer,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: AppTheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Center(
         child: Text(
@@ -675,7 +716,9 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: _debtColor(state).withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(20),
@@ -719,14 +762,18 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFE5E2E1),
                 side: const BorderSide(color: Color(0xFF5A4136)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
               onPressed: _busy ? null : () => _rejectContest(d),
               child: Text(
                 'Rejeitar',
                 style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12, fontWeight: FontWeight.w700),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -737,13 +784,17 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                 backgroundColor: AppTheme.primaryContainer,
                 foregroundColor: const Color(0xFF050505),
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                  horizontal: 14,
+                  vertical: 8,
+                ),
               ),
               onPressed: _busy ? null : () => _reverseCharge(d),
               child: Text(
                 paid > 0 ? 'Reverter' : 'Anular',
                 style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12, fontWeight: FontWeight.w700),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
         ],
@@ -759,8 +810,10 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
     final state = c['state'] as String? ?? 'pending';
     final amount = c['amount'] as int? ?? 0;
     final paidAmt = c['paid_amount'] as int? ?? 0;
-    final driver = (c['drivers'] as Map<String, dynamic>? ?? {})['users']
-        as Map<String, dynamic>? ?? {};
+    final driver =
+        (c['drivers'] as Map<String, dynamic>? ?? {})['users']
+            as Map<String, dynamic>? ??
+        {};
     final name = driver['name']?.toString() ?? '—';
     final trip = c['trips'] as Map<String, dynamic>?;
     final route = trip == null
@@ -773,7 +826,9 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
       decoration: BoxDecoration(
         color: AppTheme.surfaceContainer,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: AppTheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
@@ -796,7 +851,9 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: _compColor(state).withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(20),
@@ -837,7 +894,9 @@ class _AdminCancelamentosPageState extends State<AdminCancelamentosPage> {
       decoration: BoxDecoration(
         color: AppTheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: AppTheme.outlineVariant.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [

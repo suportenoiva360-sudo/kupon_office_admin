@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/features/admin/presentation/widgets/admin_driver_documents.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 Future<bool?> showAdminDriverEditDialog(
   BuildContext context,
@@ -119,16 +120,13 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
     try {
       final data = await _db
           .from('drivers')
-          .select(
-            'provinces(name), users!inner(created_at, role)',
-          )
+          .select('provinces(name), users!inner(created_at, role)')
           .eq('id', _driverId)
           .single();
       if (!mounted) return;
       setState(() {
         final users = data['users'] as Map<String, dynamic>? ?? {};
-        _memberSince =
-            DateTime.tryParse(users['created_at'] as String? ?? '');
+        _memberSince = DateTime.tryParse(users['created_at'] as String? ?? '');
         final prov = data['provinces'] as Map<String, dynamic>?;
         _provinceName = prov?['name'] as String?;
       });
@@ -137,13 +135,10 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            error ? AppTheme.errorContainer : const Color(0xFF2E7D32),
-      ),
+    showAdminSnackBar(
+      context,
+      message: msg,
+      type: error ? AdminSnackType.error : AdminSnackType.success,
     );
   }
 
@@ -159,24 +154,30 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
     setState(() => _saving = true);
     try {
       if (_userId.isNotEmpty) {
-        await _db.from('users').update({
-          'name': name,
-          'phone': phone,
-          'photo_url': _photoCtrl.text.trim().isEmpty
-              ? null
-              : _photoCtrl.text.trim(),
-          'province_id': _provinceId,
-        }).eq('id', _userId);
+        await _db
+            .from('users')
+            .update({
+              'name': name,
+              'phone': phone,
+              'photo_url': _photoCtrl.text.trim().isEmpty
+                  ? null
+                  : _photoCtrl.text.trim(),
+              'province_id': _provinceId,
+            })
+            .eq('id', _userId);
       }
 
-      await _db.from('drivers').update({
-        'category': _category,
-        'province_id': _provinceId,
-        'vehicle_model': _modelCtrl.text.trim(),
-        'vehicle_color': _colorCtrl.text.trim(),
-        'vehicle_plate': _plateCtrl.text.trim(),
-        'vehicle_year': int.tryParse(_yearCtrl.text.trim()),
-      }).eq('id', _driverId);
+      await _db
+          .from('drivers')
+          .update({
+            'category': _category,
+            'province_id': _provinceId,
+            'vehicle_model': _modelCtrl.text.trim(),
+            'vehicle_color': _colorCtrl.text.trim(),
+            'vehicle_plate': _plateCtrl.text.trim(),
+            'vehicle_year': int.tryParse(_yearCtrl.text.trim()),
+          })
+          .eq('id', _driverId);
 
       if (mounted) {
         Navigator.pop(context, true);
@@ -186,9 +187,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
       if (!mounted) return;
       setState(() => _saving = false);
       _snack(
-        e is AuthException
-            ? e.message
-            : 'Falha ao atualizar o perfil.',
+        e is AuthException ? e.message : 'Falha ao atualizar o perfil.',
         error: true,
       );
     }
@@ -261,7 +260,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
         !await _confirm(
           'Revogar aprovação',
           'O motorista deixará de receber corridas até ser aprovado '
-          'novamente.',
+              'novamente.',
           'Revogar',
         )) {
       return;
@@ -270,10 +269,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
     try {
       await _db
           .from('drivers')
-          .update({
-            'is_approved': approve,
-            if (approve) 'is_blocked': false,
-          })
+          .update({'is_approved': approve, if (approve) 'is_blocked': false})
           .eq('id', _driverId);
       widget.driver['is_approved'] = approve;
       if (approve) widget.driver['is_blocked'] = false;
@@ -294,7 +290,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
         !await _confirm(
           'Bloquear conta',
           'O motorista não poderá ficar online nem aceitar corridas. '
-          'O registo não é apagado.',
+              'O registo não é apagado.',
           'Bloquear',
         )) {
       return;
@@ -303,10 +299,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
     try {
       await _db
           .from('drivers')
-          .update({
-            'is_blocked': block,
-            if (block) 'is_online': false,
-          })
+          .update({'is_blocked': block, if (block) 'is_online': false})
           .eq('id', _driverId);
       widget.driver['is_blocked'] = block;
       if (block) widget.driver['is_online'] = false;
@@ -357,73 +350,94 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
             child: _tab == 0
                 ? SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildSectionLabel('DADOS DA CONTA'),
-                  const SizedBox(height: 12),
-                  _buildField(_nameCtrl, 'Nome completo',
-                      icon: Icons.person_outline_rounded),
-                  const SizedBox(height: 12),
-                  _buildReadOnlyRow(
-                    value: _emailCtrl.text,
-                    hint: 'Email (início de sessão)',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildField(_phoneCtrl, 'Telefone',
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone),
-                  const SizedBox(height: 12),
-                  _buildField(_photoCtrl, 'URL da foto',
-                      icon: Icons.image_outlined),
-                  const SizedBox(height: 22),
-                  _buildSectionLabel('INFORMAÇÕES'),
-                  const SizedBox(height: 12),
-                  _buildInfoSection(),
-                  const SizedBox(height: 22),
-                  _buildSectionLabel('VEÍCULO'),
-                  const SizedBox(height: 12),
-                  _buildDropdownRow(
-                    label: 'Categoria',
-                    icon: Icons.directions_car_outlined,
-                    value: _categories
-                        .firstWhere((c) => c.value == _category)
-                        .label,
-                    onTap: (v) => setState(() => _category = v),
-                    options: _categories
-                        .map((c) => (label: c.label, value: c.value))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildProvinceRow(),
-                  const SizedBox(height: 12),
-                  _buildField(_modelCtrl, 'Modelo do veículo',
-                      icon: Icons.model_training_rounded),
-                  const SizedBox(height: 12),
-                  _buildField(_colorCtrl, 'Cor',
-                      icon: Icons.color_lens_outlined),
-                  const SizedBox(height: 12),
-                  _buildField(_plateCtrl, 'Matrícula',
-                      icon: Icons.confirmation_number_outlined),
-                  const SizedBox(height: 12),
-                  _buildField(_yearCtrl, 'Ano',
-                      icon: Icons.calendar_today_outlined,
-                      keyboardType: TextInputType.number),
-                  const SizedBox(height: 22),
-                  _buildSectionLabel('GESTÃO DA CONTA'),
-                  const SizedBox(height: 12),
-                  _buildManagement(),
-                  const SizedBox(height: 12),
-                  _manageButton(
-                    icon: Icons.folder_open_rounded,
-                    label: 'Ver Documentos do Motorista',
-                    color: const Color(0xFF7B8CDE),
-                    onTap: _openDocuments,
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            )
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildSectionLabel('DADOS DA CONTA'),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          _nameCtrl,
+                          'Nome completo',
+                          icon: Icons.person_outline_rounded,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildReadOnlyRow(
+                          value: _emailCtrl.text,
+                          hint: 'Email (início de sessão)',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          _phoneCtrl,
+                          'Telefone',
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          _photoCtrl,
+                          'URL da foto',
+                          icon: Icons.image_outlined,
+                        ),
+                        const SizedBox(height: 22),
+                        _buildSectionLabel('INFORMAÇÕES'),
+                        const SizedBox(height: 12),
+                        _buildInfoSection(),
+                        const SizedBox(height: 22),
+                        _buildSectionLabel('VEÍCULO'),
+                        const SizedBox(height: 12),
+                        _buildDropdownRow(
+                          label: 'Categoria',
+                          icon: Icons.directions_car_outlined,
+                          value: _categories
+                              .firstWhere((c) => c.value == _category)
+                              .label,
+                          onTap: (v) => setState(() => _category = v),
+                          options: _categories
+                              .map((c) => (label: c.label, value: c.value))
+                              .toList(),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildProvinceRow(),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          _modelCtrl,
+                          'Modelo do veículo',
+                          icon: Icons.model_training_rounded,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          _colorCtrl,
+                          'Cor',
+                          icon: Icons.color_lens_outlined,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          _plateCtrl,
+                          'Matrícula',
+                          icon: Icons.confirmation_number_outlined,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildField(
+                          _yearCtrl,
+                          'Ano',
+                          icon: Icons.calendar_today_outlined,
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 22),
+                        _buildSectionLabel('GESTÃO DA CONTA'),
+                        const SizedBox(height: 12),
+                        _buildManagement(),
+                        const SizedBox(height: 12),
+                        _manageButton(
+                          icon: Icons.folder_open_rounded,
+                          label: 'Ver Documentos do Motorista',
+                          color: const Color(0xFF7B8CDE),
+                          onTap: _openDocuments,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  )
                 : _buildHistoryTab(),
           ),
           _buildFooter(),
@@ -459,9 +473,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                 : AppTheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(60),
             border: Border.all(
-              color: sel
-                  ? AppTheme.primaryContainer
-                  : AppTheme.outlineVariant,
+              color: sel ? AppTheme.primaryContainer : AppTheme.outlineVariant,
             ),
           ),
           child: Row(
@@ -513,9 +525,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
       children: [
         Expanded(
           child: _manageButton(
-            icon: isApproved
-                ? Icons.cancel_outlined
-                : Icons.verified_rounded,
+            icon: isApproved ? Icons.cancel_outlined : Icons.verified_rounded,
             label: isApproved ? 'Revogar Aprovação' : 'Aprovar Motorista',
             color: isApproved
                 ? const Color(0xFF93000A)
@@ -618,11 +628,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
       return Column(
         children: [
           const SizedBox(height: 48),
-          const Icon(
-            Icons.history_rounded,
-            size: 42,
-            color: Color(0xFFE2BFB0),
-          ),
+          const Icon(Icons.history_rounded, size: 42, color: Color(0xFFE2BFB0)),
           const SizedBox(height: 12),
           Text(
             'Nenhuma viagem registada',
@@ -829,15 +835,17 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                           errorBuilder: (_, _, _) => Icon(
                             Icons.person_rounded,
                             size: 26,
-                            color: AppTheme.onSurfaceVariant
-                                .withValues(alpha: 0.6),
+                            color: AppTheme.onSurfaceVariant.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         )
                       : Icon(
                           Icons.person_rounded,
                           size: 26,
-                          color: AppTheme.onSurfaceVariant
-                              .withValues(alpha: 0.6),
+                          color: AppTheme.onSurfaceVariant.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                 ),
               ),
@@ -854,10 +862,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                         ? const Color(0xFF4CAF88)
                         : AppTheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(100),
-                    border: Border.all(
-                      color: AppTheme.surface,
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: AppTheme.surface, width: 1.5),
                   ),
                   child: Text(
                     isOnline ? 'ON' : 'OFF',
@@ -911,11 +916,17 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _headerMeta(Icons.star_rounded, rating,
-                        AppTheme.primaryContainer),
+                    _headerMeta(
+                      Icons.star_rounded,
+                      rating,
+                      AppTheme.primaryContainer,
+                    ),
                     const SizedBox(width: 14),
                     _headerMeta(
-                        Icons.directions_car_rounded, '$totalTrips', null),
+                      Icons.directions_car_rounded,
+                      '$totalTrips',
+                      null,
+                    ),
                     if (widget.driver['is_blocked'] == true) ...[
                       const SizedBox(width: 14),
                       _blockedChip(),
@@ -1007,9 +1018,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
       child: Column(
         children: [
           _infoRow(
-            icon: isBlocked
-                ? Icons.block_rounded
-                : Icons.verified_rounded,
+            icon: isBlocked ? Icons.block_rounded : Icons.verified_rounded,
             label: 'ESTADO',
             value: isBlocked
                 ? 'Bloqueado'
@@ -1017,8 +1026,8 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
             valueColor: isBlocked
                 ? const Color(0xFFFFB4AB)
                 : isApproved
-                    ? const Color(0xFF4CAF88)
-                    : const Color(0xFFF5C842),
+                ? const Color(0xFF4CAF88)
+                : const Color(0xFFF5C842),
           ),
           _infoDivider(),
           _infoRow(
@@ -1169,7 +1178,10 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
         controller: ctrl,
         obscureText: obscure,
         keyboardType: keyboardType,
-        style: GoogleFonts.spaceGrotesk(fontSize: 14, color: AppTheme.onSurface),
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 14,
+          color: AppTheme.onSurface,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.spaceGrotesk(
@@ -1184,8 +1196,10 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                 )
               : null,
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -1284,10 +1298,12 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
                   }
                 },
                 items: options
-                    .map((o) => DropdownMenuItem(
-                          value: o.label,
-                          child: Text(o.label),
-                        ))
+                    .map(
+                      (o) => DropdownMenuItem(
+                        value: o.label,
+                        child: Text(o.label),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -1298,8 +1314,9 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
   }
 
   Widget _buildProvinceRow() {
-    final hasProvince =
-        _provinces.any((p) => (p['id'] as String?) == _provinceId);
+    final hasProvince = _provinces.any(
+      (p) => (p['id'] as String?) == _provinceId,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1373,9 +1390,7 @@ class _AdminDriverEditDialogState extends State<AdminDriverEditDialog> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: _saving
-                  ? null
-                  : () => Navigator.pop(context, _dirty),
+              onTap: _saving ? null : () => Navigator.pop(context, _dirty),
               child: Container(
                 height: 46,
                 decoration: BoxDecoration(

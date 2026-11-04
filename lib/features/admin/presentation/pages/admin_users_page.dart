@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminUsersPage extends StatefulWidget {
   const AdminUsersPage({super.key});
@@ -24,6 +25,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   final Map<String, double> _userSpent = {};
   final Map<String, double> _ratingSum = {};
   final Map<String, int> _ratingCount = {};
+
+  /// userId → nome do plano ativo (só passageiros com subscrição válida).
+  final Map<String, String> _activePlans = {};
 
   @override
   void initState() {
@@ -65,6 +69,20 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       _userSpent.clear();
       _ratingSum.clear();
       _ratingCount.clear();
+
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final subs = await _db
+          .from('subscriptions')
+          .select('user_id, end_date, subscription_plans(name)')
+          .eq('status', 'active')
+          .gt('end_date', nowIso);
+      _activePlans.clear();
+      for (final s in subs as List) {
+        final uid = s['user_id'] as String?;
+        final plan = s['subscription_plans'];
+        final planName = plan is Map ? plan['name'] as String? : null;
+        if (uid != null && planName != null) _activePlans[uid] = planName;
+      }
       for (final t in trips as List) {
         final pid = t['passenger_id'] as String?;
         if (pid == null) continue;
@@ -226,14 +244,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       builder: (_) => const _SendNotificationDialog(broadcast: true),
     );
     if (sent == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Notificação enviada para os utilizadores selecionados',
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.primaryContainer,
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Notificação enviada para os utilizadores selecionados',
+        type: AdminSnackType.success,
       );
     }
   }
@@ -821,6 +835,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         runSpacing: 4,
                         children: [
                           _roleBadge(role),
+                          if (role == 'passenger')
+                            _planBadge(_activePlans[user['id']]),
                           if (blocked) _blockedBadge(),
                         ],
                       ),
@@ -954,6 +970,26 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     );
   }
 
+  Widget _planBadge(String? planName) {
+    final hasPlan = planName != null && planName.isNotEmpty;
+    final color = hasPlan ? const Color(0xFF5AB0FF) : AppTheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Text(
+        hasPlan ? 'Plano: $planName' : 'Sem plano',
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   Widget _blockedBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1053,14 +1089,10 @@ class _UserDetailDialogState extends State<_UserDetailDialog> {
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: error
-            ? AppTheme.errorContainer
-            : const Color(0xFF2E7D32),
-      ),
+    showAdminSnackBar(
+      context,
+      message: msg,
+      type: error ? AdminSnackType.error : AdminSnackType.success,
     );
   }
 
@@ -2022,11 +2054,10 @@ class _SendNotificationDialogState extends State<_SendNotificationDialog> {
     final title = _titleCtrl.text.trim();
     final body = _bodyCtrl.text.trim();
     if (title.isEmpty || body.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preencha o título e a mensagem.'),
-          backgroundColor: AppTheme.errorContainer,
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Preencha o título e a mensagem.',
+        type: AdminSnackType.error,
       );
       return;
     }
@@ -2078,11 +2109,10 @@ class _SendNotificationDialogState extends State<_SendNotificationDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _sending = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Falha ao enviar notificação: ${e.toString()}'),
-          backgroundColor: AppTheme.errorContainer,
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Falha ao enviar notificação: ${e.toString()}',
+        type: AdminSnackType.error,
       );
     }
   }

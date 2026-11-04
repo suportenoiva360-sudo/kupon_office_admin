@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminSuportePage extends StatefulWidget {
   const AdminSuportePage({super.key});
@@ -81,10 +82,14 @@ class _AdminSuportePageState extends State<AdminSuportePage>
     var list = _tickets;
     switch (_tabCtrl.index) {
       case 1:
-        list = list.where((t) => _isOpenStatus(t['status'] as String?)).toList();
+        list = list
+            .where((t) => _isOpenStatus(t['status'] as String?))
+            .toList();
         break;
       case 2:
-        list = list.where((t) => _isClosedStatus(t['status'] as String?)).toList();
+        list = list
+            .where((t) => _isClosedStatus(t['status'] as String?))
+            .toList();
         break;
       default:
         break;
@@ -108,7 +113,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
     }
 
     if (_selectedPriorityFilter != 'all') {
-      list = list.where((t) => t['priority'] == _selectedPriorityFilter).toList();
+      list = list
+          .where((t) => t['priority'] == _selectedPriorityFilter)
+          .toList();
     }
 
     return list;
@@ -127,10 +134,18 @@ class _AdminSuportePageState extends State<AdminSuportePage>
       return _buildTicketDetail(_openTicket!);
     }
 
-    final openCount = _tickets.where((t) => _isOpenStatus(t['status'] as String?)).length;
-    final closedCount = _tickets.where((t) => _isClosedStatus(t['status'] as String?)).length;
+    final openCount = _tickets
+        .where((t) => _isOpenStatus(t['status'] as String?))
+        .length;
+    final closedCount = _tickets
+        .where((t) => _isClosedStatus(t['status'] as String?))
+        .length;
     final urgentCount = _tickets
-        .where((t) => t['priority'] == 'urgent' && _isOpenStatus(t['status'] as String?))
+        .where(
+          (t) =>
+              t['priority'] == 'urgent' &&
+              _isOpenStatus(t['status'] as String?),
+        )
         .length;
 
     return Scaffold(
@@ -165,7 +180,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                   indicatorSize: TabBarIndicatorSize.label,
                   dividerColor: AppTheme.outlineVariant.withValues(alpha: 0.3),
                   labelColor: AppTheme.primaryContainer,
-                  unselectedLabelColor: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+                  unselectedLabelColor: const Color(
+                    0xFFE2BFB0,
+                  ).withValues(alpha: 0.6),
                   labelStyle: GoogleFonts.spaceGrotesk(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -242,7 +259,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
             style: GoogleFonts.spaceGrotesk(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: count > 0 ? badgeColor : const Color(0xFFE2BFB0).withValues(alpha: 0.5),
+              color: count > 0
+                  ? badgeColor
+                  : const Color(0xFFE2BFB0).withValues(alpha: 0.5),
             ),
           ),
         ),
@@ -287,7 +306,10 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF4CAF88).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
@@ -506,7 +528,8 @@ class _AdminSuportePageState extends State<AdminSuportePage>
               ),
             ),
             child: TextField(
-              onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+              onChanged: (v) =>
+                  setState(() => _searchQuery = v.trim().toLowerCase()),
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 13,
                 color: const Color(0xFFE5E2E1),
@@ -560,7 +583,10 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                 color: const Color(0xFFE5E2E1),
               ),
               items: const [
-                DropdownMenuItem(value: 'all', child: Text('Prioridade: Todas')),
+                DropdownMenuItem(
+                  value: 'all',
+                  child: Text('Prioridade: Todas'),
+                ),
                 DropdownMenuItem(value: 'urgent', child: Text('Urgente')),
                 DropdownMenuItem(value: 'high', child: Text('Alta')),
                 DropdownMenuItem(value: 'normal', child: Text('Normal')),
@@ -612,12 +638,14 @@ class _AdminSuportePageState extends State<AdminSuportePage>
     final isOpen = _isOpenStatus(status);
     final isUrgent = priority == 'urgent';
 
-    final statusColor = isOpen ? const Color(0xFFF5C842) : const Color(0xFF4CAF88);
+    final statusColor = isOpen
+        ? const Color(0xFFF5C842)
+        : const Color(0xFF4CAF88);
     final priorityColor = isUrgent
         ? const Color(0xFFCF6679)
         : priority == 'high'
-            ? const Color(0xFFF5C842)
-            : const Color(0xFFE2BFB0).withValues(alpha: 0.7);
+        ? const Color(0xFFF5C842)
+        : const Color(0xFFE2BFB0).withValues(alpha: 0.7);
 
     return InkWell(
       onTap: () {
@@ -697,16 +725,25 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: priorityColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: priorityColor.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: priorityColor.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.flag_rounded, size: 10, color: priorityColor),
+                            Icon(
+                              Icons.flag_rounded,
+                              size: 10,
+                              color: priorityColor,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               _priorityLabel(priority),
@@ -739,7 +776,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                           '•  $phone',
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 11,
-                            color: const Color(0xFFE2BFB0).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFFE2BFB0,
+                            ).withValues(alpha: 0.4),
                           ),
                         ),
                       ],
@@ -919,7 +958,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                                 'Telefone: $phone • Criado ${_fmtDate(ticket['created_at'])}',
                                 style: GoogleFonts.spaceGrotesk(
                                   fontSize: 11.5,
-                                  color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+                                  color: const Color(
+                                    0xFFE2BFB0,
+                                  ).withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
@@ -930,7 +971,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                           children: [
                             _statusChip(
                               isOpen ? 'Aberto' : 'Resolvido',
-                              isOpen ? const Color(0xFFF5C842) : const Color(0xFF4CAF88),
+                              isOpen
+                                  ? const Color(0xFFF5C842)
+                                  : const Color(0xFF4CAF88),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -940,7 +983,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                                 fontWeight: FontWeight.bold,
                                 color: priority == 'urgent'
                                     ? const Color(0xFFCF6679)
-                                    : const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+                                    : const Color(
+                                        0xFFE2BFB0,
+                                      ).withValues(alpha: 0.6),
                               ),
                             ),
                           ],
@@ -1025,7 +1070,10 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(10),
@@ -1074,22 +1122,31 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                       itemBuilder: (_, i) {
                         final reply = _ticketReplies[i];
                         final isAdmin = reply['is_staff'] == true;
-                        final replyUser = reply['users'] as Map<String, dynamic>? ?? {};
+                        final replyUser =
+                            reply['users'] as Map<String, dynamic>? ?? {};
                         final senderName =
-                            (replyUser['name'] as String? ?? '').trim().isNotEmpty
-                                ? replyUser['name'] as String
-                                : name;
+                            (replyUser['name'] as String? ?? '')
+                                .trim()
+                                .isNotEmpty
+                            ? replyUser['name'] as String
+                            : name;
                         return Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: isAdmin
-                                ? AppTheme.primaryContainer.withValues(alpha: 0.08)
+                                ? AppTheme.primaryContainer.withValues(
+                                    alpha: 0.08,
+                                  )
                                 : AppTheme.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isAdmin
-                                  ? AppTheme.primaryContainer.withValues(alpha: 0.25)
-                                  : AppTheme.outlineVariant.withValues(alpha: 0.2),
+                                  ? AppTheme.primaryContainer.withValues(
+                                      alpha: 0.25,
+                                    )
+                                  : AppTheme.outlineVariant.withValues(
+                                      alpha: 0.2,
+                                    ),
                             ),
                           ),
                           child: Column(
@@ -1098,17 +1155,25 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                               Row(
                                 children: [
                                   Icon(
-                                    isAdmin ? Icons.admin_panel_settings_rounded : Icons.person_rounded,
+                                    isAdmin
+                                        ? Icons.admin_panel_settings_rounded
+                                        : Icons.person_rounded,
                                     size: 14,
-                                    color: isAdmin ? AppTheme.primaryContainer : const Color(0xFFE2BFB0),
+                                    color: isAdmin
+                                        ? AppTheme.primaryContainer
+                                        : const Color(0xFFE2BFB0),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    isAdmin ? 'Suporte KupOn (Admin)' : senderName,
+                                    isAdmin
+                                        ? 'Suporte KupOn (Admin)'
+                                        : senderName,
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: isAdmin ? AppTheme.primaryContainer : const Color(0xFFE5E2E1),
+                                      color: isAdmin
+                                          ? AppTheme.primaryContainer
+                                          : const Color(0xFFE5E2E1),
                                     ),
                                   ),
                                   const Spacer(),
@@ -1116,7 +1181,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                                     _fmtDate(reply['created_at']),
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 10,
-                                      color: const Color(0xFFE2BFB0).withValues(alpha: 0.5),
+                                      color: const Color(
+                                        0xFFE2BFB0,
+                                      ).withValues(alpha: 0.5),
                                     ),
                                   ),
                                 ],
@@ -1176,7 +1243,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                           hintText: 'Escrever resposta para o usuário...',
                           hintStyle: GoogleFonts.spaceGrotesk(
                             fontSize: 13,
-                            color: const Color(0xFFE2BFB0).withValues(alpha: 0.35),
+                            color: const Color(
+                              0xFFE2BFB0,
+                            ).withValues(alpha: 0.35),
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
@@ -1192,8 +1261,7 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                     onTap: () async {
                       final text = _replyCtrl.text.trim();
                       if (text.isEmpty) return;
-                      final ok =
-                          await _sendReply(ticket['id'] as String, text);
+                      final ok = await _sendReply(ticket['id'] as String, text);
                       if (ok) _replyCtrl.clear();
                       _loadReplies(ticket['id'] as String);
                     },
@@ -1205,7 +1273,9 @@ class _AdminSuportePageState extends State<AdminSuportePage>
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primaryContainer.withValues(alpha: 0.3),
+                            color: AppTheme.primaryContainer.withValues(
+                              alpha: 0.3,
+                            ),
                             blurRadius: 10,
                             offset: const Offset(0, 3),
                           ),
@@ -1231,11 +1301,10 @@ class _AdminSuportePageState extends State<AdminSuportePage>
     final senderId = _db.auth.currentUser?.id;
     if (senderId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sessão expirada. Inicie sessão novamente.'),
-            backgroundColor: Color(0xFFCF6679),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Sessão expirada. Inicie sessão novamente.',
+          type: AdminSnackType.error,
         );
       }
       return false;
@@ -1254,21 +1323,19 @@ class _AdminSuportePageState extends State<AdminSuportePage>
             .eq('id', ticketId);
       } catch (_) {}
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Resposta enviada ao usuário.'),
-            backgroundColor: Color(0xFF4CAF88),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Resposta enviada ao usuário.',
+          type: AdminSnackType.success,
         );
       }
       return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao enviar resposta: $e'),
-            backgroundColor: const Color(0xFFCF6679),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Erro ao enviar resposta: $e',
+          type: AdminSnackType.error,
         );
       }
       return false;
@@ -1288,21 +1355,19 @@ class _AdminSuportePageState extends State<AdminSuportePage>
         _openTicket?['status'] = 'resolved';
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Chamado concluído com sucesso.'),
-            backgroundColor: Color(0xFF4CAF88),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Chamado concluído com sucesso.',
+          type: AdminSnackType.success,
         );
       }
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao concluir ticket: $e'),
-            backgroundColor: const Color(0xFFCF6679),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Erro ao concluir ticket: $e',
+          type: AdminSnackType.error,
         );
       }
     }
@@ -1383,11 +1448,12 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: AppTheme.surface,
-      child: tabBar,
-    );
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: AppTheme.surface, child: tabBar);
   }
 
   @override

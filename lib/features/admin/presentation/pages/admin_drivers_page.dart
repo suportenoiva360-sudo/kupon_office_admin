@@ -8,6 +8,7 @@ import 'package:kupon_office_admin/features/admin/presentation/pages/admin_add_d
 import 'package:kupon_office_admin/features/admin/presentation/widgets/admin_driver_edit_dialog.dart';
 import 'package:kupon_office_admin/features/admin/presentation/widgets/admin_driver_documents.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminDriversPage extends StatefulWidget {
   const AdminDriversPage({super.key});
@@ -241,12 +242,10 @@ class _AdminDriversPageState extends State<AdminDriversPage>
           final created = await showAddDriverDialog(context);
           if (created == true && mounted) {
             _loadDrivers();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Motorista criado e aprovado com sucesso'),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: Color(0xFF2E7D32),
-              ),
+            showAdminSnackBar(
+              context,
+              message: 'Motorista criado e aprovado com sucesso',
+              type: AdminSnackType.success,
             );
           }
         },
@@ -1136,7 +1135,8 @@ class _AdminDriversPageState extends State<AdminDriversPage>
     final freeRides = d['free_trips_remaining'] as int? ?? 0;
     final packageId = d['package_id'] as String?;
     final packageExpires = DateTime.tryParse('${d['package_expires'] ?? ''}');
-    final packageActive = packageId != null &&
+    final packageActive =
+        packageId != null &&
         packageId.isNotEmpty &&
         (packageExpires == null || packageExpires.isAfter(DateTime.now()));
     final packageUsed = d['package_trips_used'] as int? ?? 0;
@@ -1319,12 +1319,15 @@ class _AdminDriversPageState extends State<AdminDriversPage>
                           text: '$freeRides grátis',
                           color: const Color(0xFF4CAF88),
                         ),
-                      if (packageActive)
-                        _cardMeta(
-                          icon: Icons.inventory_2_rounded,
-                          text: '$packageUsed do pacote',
-                          color: const Color(0xFFE0A93E),
-                        ),
+                      _cardMeta(
+                        icon: Icons.inventory_2_rounded,
+                        text: packageActive
+                            ? '$packageUsed do pacote'
+                            : 'Sem pacote',
+                        color: packageActive
+                            ? const Color(0xFFE0A93E)
+                            : AppTheme.onSurfaceVariant,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -1506,26 +1509,20 @@ class _AdminDriversPageState extends State<AdminDriversPage>
     try {
       await _db.from('drivers').update({'is_approved': approve}).eq('id', id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            approve ? 'Motorista aprovado com sucesso' : 'Aprovação revogada',
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: approve
-              ? const Color(0xFF2E7D32)
-              : AppTheme.errorContainer,
-        ),
+      showAdminSnackBar(
+        context,
+        message: approve
+            ? 'Motorista aprovado com sucesso'
+            : 'Aprovação revogada',
+        type: approve ? AdminSnackType.success : AdminSnackType.warning,
       );
     } catch (_) {
       if (mounted) {
         setState(() => d['is_approved'] = prev);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Falha ao atualizar a aprovação do motorista'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.errorContainer,
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Falha ao atualizar a aprovação do motorista',
+          type: AdminSnackType.error,
         );
       }
     }

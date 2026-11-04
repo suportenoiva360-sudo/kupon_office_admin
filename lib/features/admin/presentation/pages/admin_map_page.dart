@@ -1729,14 +1729,19 @@ class _AdminMapPageState extends State<AdminMapPage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            name,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.onSurface,
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.onSurface,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(

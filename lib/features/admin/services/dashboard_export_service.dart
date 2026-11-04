@@ -11,6 +11,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'package:kupon_office_admin/repositories/dashboard_repository.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class DashboardReportData {
   final String periodName;
@@ -60,7 +61,8 @@ class DashboardExportService {
   }) async {
     try {
       final pdfBytes = await generatePdfDocument(data);
-      final filename = 'relatorio_kupon_${_fileDateFormat.format(data.generatedAt)}.pdf';
+      final filename =
+          'relatorio_kupon_${_fileDateFormat.format(data.generatedAt)}.pdf';
 
       await Printing.layoutPdf(
         name: filename,
@@ -68,11 +70,10 @@ class DashboardExportService {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao gerar PDF: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Erro ao gerar PDF: $e',
+          type: AdminSnackType.error,
         );
       }
     }
@@ -108,20 +109,15 @@ class DashboardExportService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
-        theme: pw.ThemeData.withFont(
-          base: fontRegular,
-          bold: fontBold,
-        ),
+        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (context) => _buildPdfHeader(
           data: data,
           primaryColor: primaryOrange,
           textColor: textWhite,
           mutedColor: textMuted,
         ),
-        footer: (context) => _buildPdfFooter(
-          context: context,
-          mutedColor: textMuted,
-        ),
+        footer: (context) =>
+            _buildPdfFooter(context: context, mutedColor: textMuted),
         build: (context) => [
           pw.SizedBox(height: 16),
           // ── KPI Summary Cards ──
@@ -136,25 +132,55 @@ class DashboardExportService {
 
           // ── Tabela Diária ──
           if (data.daily.isNotEmpty) ...[
-            _buildSectionHeader('Histórico Diário Operacional', primaryOrange, textWhite),
+            _buildSectionHeader(
+              'Histórico Diário Operacional',
+              primaryOrange,
+              textWhite,
+            ),
             pw.SizedBox(height: 8),
-            _buildDailyTable(data.daily, darkBg, lightGrey, textWhite, tableBorder),
+            _buildDailyTable(
+              data.daily,
+              darkBg,
+              lightGrey,
+              textWhite,
+              tableBorder,
+            ),
             pw.SizedBox(height: 24),
           ],
 
           // ── Leaderboard / Top Motoristas ──
           if (data.leaderboard.isNotEmpty) ...[
-            _buildSectionHeader('Ranking de Melhores Motoristas', primaryOrange, textWhite),
+            _buildSectionHeader(
+              'Ranking de Melhores Motoristas',
+              primaryOrange,
+              textWhite,
+            ),
             pw.SizedBox(height: 8),
-            _buildLeaderboardTable(data.leaderboard, darkBg, lightGrey, textWhite, tableBorder),
+            _buildLeaderboardTable(
+              data.leaderboard,
+              darkBg,
+              lightGrey,
+              textWhite,
+              tableBorder,
+            ),
             pw.SizedBox(height: 24),
           ],
 
           // ── Alertas & Ocorrências ──
           if (data.alerts.isNotEmpty) ...[
-            _buildSectionHeader('Alertas e Ocorrências Recentes', primaryOrange, textWhite),
+            _buildSectionHeader(
+              'Alertas e Ocorrências Recentes',
+              primaryOrange,
+              textWhite,
+            ),
             pw.SizedBox(height: 8),
-            _buildAlertsTable(data.alerts, darkBg, lightGrey, textWhite, tableBorder),
+            _buildAlertsTable(
+              data.alerts,
+              darkBg,
+              lightGrey,
+              textWhite,
+              tableBorder,
+            ),
             pw.SizedBox(height: 16),
           ],
         ],
@@ -173,7 +199,9 @@ class DashboardExportService {
     return pw.Container(
       padding: const pw.EdgeInsets.only(bottom: 12),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey700, width: 1)),
+        border: pw.Border(
+          bottom: pw.BorderSide(color: PdfColors.grey700, width: 1),
+        ),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -240,7 +268,9 @@ class DashboardExportService {
     return pw.Container(
       padding: const pw.EdgeInsets.only(top: 12),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(top: pw.BorderSide(color: PdfColors.grey800, width: 1)),
+        border: pw.Border(
+          top: pw.BorderSide(color: PdfColors.grey800, width: 1),
+        ),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -258,7 +288,11 @@ class DashboardExportService {
     );
   }
 
-  static pw.Widget _buildSectionHeader(String title, PdfColor accentColor, PdfColor textColor) {
+  static pw.Widget _buildSectionHeader(
+    String title,
+    PdfColor accentColor,
+    PdfColor textColor,
+  ) {
     return pw.Row(
       children: [
         pw.Container(width: 4, height: 14, color: accentColor),
@@ -372,13 +406,7 @@ class DashboardExportService {
             ),
           ),
           pw.SizedBox(height: 2),
-          pw.Text(
-            subtext,
-            style: pw.TextStyle(
-              fontSize: 7,
-              color: mutedColor,
-            ),
-          ),
+          pw.Text(subtext, style: pw.TextStyle(fontSize: 7, color: mutedColor)),
         ],
       ),
     );
@@ -398,8 +426,18 @@ class DashboardExportService {
           decoration: pw.BoxDecoration(color: headerBg),
           children: [
             _cell('Data', isHeader: true, textColor: textColor),
-            _cell('Corridas', isHeader: true, align: pw.TextAlign.center, textColor: textColor),
-            _cell('Receita Estimada', isHeader: true, align: pw.TextAlign.right, textColor: textColor),
+            _cell(
+              'Corridas',
+              isHeader: true,
+              align: pw.TextAlign.center,
+              textColor: textColor,
+            ),
+            _cell(
+              'Receita Estimada',
+              isHeader: true,
+              align: pw.TextAlign.right,
+              textColor: textColor,
+            ),
           ],
         ),
         for (var i = 0; i < daily.length; i++)
@@ -407,8 +445,16 @@ class DashboardExportService {
             decoration: pw.BoxDecoration(color: i.isEven ? rowBg : headerBg),
             children: [
               _cell(_dayFormat.format(daily[i].date), textColor: textColor),
-              _cell('${daily[i].trips}', align: pw.TextAlign.center, textColor: textColor),
-              _cell('${formatNumber(daily[i].revenue)} Kz', align: pw.TextAlign.right, textColor: textColor),
+              _cell(
+                '${daily[i].trips}',
+                align: pw.TextAlign.center,
+                textColor: textColor,
+              ),
+              _cell(
+                '${formatNumber(daily[i].revenue)} Kz',
+                align: pw.TextAlign.right,
+                textColor: textColor,
+              ),
             ],
           ),
       ],
@@ -436,24 +482,66 @@ class DashboardExportService {
         pw.TableRow(
           decoration: pw.BoxDecoration(color: headerBg),
           children: [
-            _cell('#', isHeader: true, align: pw.TextAlign.center, textColor: textColor),
+            _cell(
+              '#',
+              isHeader: true,
+              align: pw.TextAlign.center,
+              textColor: textColor,
+            ),
             _cell('Motorista', isHeader: true, textColor: textColor),
             _cell('Categoria', isHeader: true, textColor: textColor),
-            _cell('Avaliação', isHeader: true, align: pw.TextAlign.center, textColor: textColor),
-            _cell('Corridas', isHeader: true, align: pw.TextAlign.center, textColor: textColor),
-            _cell('Faturamento', isHeader: true, align: pw.TextAlign.right, textColor: textColor),
+            _cell(
+              'Avaliação',
+              isHeader: true,
+              align: pw.TextAlign.center,
+              textColor: textColor,
+            ),
+            _cell(
+              'Corridas',
+              isHeader: true,
+              align: pw.TextAlign.center,
+              textColor: textColor,
+            ),
+            _cell(
+              'Faturamento',
+              isHeader: true,
+              align: pw.TextAlign.right,
+              textColor: textColor,
+            ),
           ],
         ),
         for (var i = 0; i < drivers.length; i++)
           pw.TableRow(
             decoration: pw.BoxDecoration(color: i.isEven ? rowBg : headerBg),
             children: [
-              _cell('${i + 1}', align: pw.TextAlign.center, textColor: textColor),
-              _cell(drivers[i]['name'] as String? ?? 'Motorista', textColor: textColor),
-              _cell((drivers[i]['category'] as String? ?? 'Standard').toUpperCase(), textColor: textColor),
-              _cell('${(drivers[i]['rating'] as num?)?.toStringAsFixed(1) ?? '5.0'} ★', align: pw.TextAlign.center, textColor: textColor),
-              _cell('${drivers[i]['period_trips'] ?? 0}', align: pw.TextAlign.center, textColor: textColor),
-              _cell('${formatNumber((drivers[i]['period_revenue'] as num?) ?? 0)} Kz', align: pw.TextAlign.right, textColor: textColor),
+              _cell(
+                '${i + 1}',
+                align: pw.TextAlign.center,
+                textColor: textColor,
+              ),
+              _cell(
+                drivers[i]['name'] as String? ?? 'Motorista',
+                textColor: textColor,
+              ),
+              _cell(
+                (drivers[i]['category'] as String? ?? 'Standard').toUpperCase(),
+                textColor: textColor,
+              ),
+              _cell(
+                '${(drivers[i]['rating'] as num?)?.toStringAsFixed(1) ?? '5.0'} ★',
+                align: pw.TextAlign.center,
+                textColor: textColor,
+              ),
+              _cell(
+                '${drivers[i]['period_trips'] ?? 0}',
+                align: pw.TextAlign.center,
+                textColor: textColor,
+              ),
+              _cell(
+                '${formatNumber((drivers[i]['period_revenue'] as num?) ?? 0)} Kz',
+                align: pw.TextAlign.right,
+                textColor: textColor,
+              ),
             ],
           ),
       ],
@@ -482,7 +570,12 @@ class DashboardExportService {
             _cell('Tipo', isHeader: true, textColor: textColor),
             _cell('Título', isHeader: true, textColor: textColor),
             _cell('Descrição', isHeader: true, textColor: textColor),
-            _cell('Data/Hora', isHeader: true, align: pw.TextAlign.right, textColor: textColor),
+            _cell(
+              'Data/Hora',
+              isHeader: true,
+              align: pw.TextAlign.right,
+              textColor: textColor,
+            ),
           ],
         ),
         for (var i = 0; i < alerts.length; i++)
@@ -492,7 +585,11 @@ class DashboardExportService {
               _cell(alerts[i].kind.toUpperCase(), textColor: textColor),
               _cell(alerts[i].title, textColor: textColor),
               _cell(alerts[i].description, textColor: textColor),
-              _cell(alerts[i].time, align: pw.TextAlign.right, textColor: textColor),
+              _cell(
+                alerts[i].time,
+                align: pw.TextAlign.right,
+                textColor: textColor,
+              ),
             ],
           ),
       ],
@@ -536,14 +633,34 @@ class DashboardExportService {
       // Indicadores Chave
       rows.add(['--- METRICAS GERAIS (KPIs) ---']);
       rows.add(['Metrica', 'Valor', 'Observacao']);
-      rows.add(['Receita Estimada (30d)', '${data.revenue30d} Kz', 'Historico recente']);
+      rows.add([
+        'Receita Estimada (30d)',
+        '${data.revenue30d} Kz',
+        'Historico recente',
+      ]);
       rows.add(['Corridas (24h)', data.trips24h, 'Corridas criadas']);
       rows.add(['Motoristas Online', data.onlineDrivers, 'Conectados']);
-      rows.add(['Motoristas Aprovados', data.approvedDrivers, 'Prontos para operar']);
-      rows.add(['Motoristas Pendentes', data.pendingDrivers, 'Aguardam validacao']);
-      rows.add(['Utilizadores Registados', data.activeUsers, 'Total de passageiros/usuarios']);
+      rows.add([
+        'Motoristas Aprovados',
+        data.approvedDrivers,
+        'Prontos para operar',
+      ]);
+      rows.add([
+        'Motoristas Pendentes',
+        data.pendingDrivers,
+        'Aguardam validacao',
+      ]);
+      rows.add([
+        'Utilizadores Registados',
+        data.activeUsers,
+        'Total de passageiros/usuarios',
+      ]);
       rows.add(['Novos Registos (30d)', data.newUsers30d, 'Crescimento']);
-      rows.add(['Tickets de Suporte Abertos', data.openTickets, 'Requerem suporte']);
+      rows.add([
+        'Tickets de Suporte Abertos',
+        data.openTickets,
+        'Requerem suporte',
+      ]);
       rows.add([]);
 
       // Histórico diário
@@ -559,7 +676,14 @@ class DashboardExportService {
       // Ranking de motoristas
       if (data.leaderboard.isNotEmpty) {
         rows.add(['--- TOP MOTORISTAS DO PERIODO ---']);
-        rows.add(['Posicao', 'Motorista', 'Categoria', 'Avaliacao', 'Corridas Realizadas', 'Faturamento (Kz)']);
+        rows.add([
+          'Posicao',
+          'Motorista',
+          'Categoria',
+          'Avaliacao',
+          'Corridas Realizadas',
+          'Faturamento (Kz)',
+        ]);
         for (var i = 0; i < data.leaderboard.length; i++) {
           final d = data.leaderboard[i];
           rows.add([
@@ -585,13 +709,17 @@ class DashboardExportService {
 
       final csvString = csv.encode(rows);
       final bytes = Uint8List.fromList(utf8.encode(csvString));
-      final filename = 'relatorio_kupon_${_fileDateFormat.format(data.generatedAt)}.csv';
+      final filename =
+          'relatorio_kupon_${_fileDateFormat.format(data.generatedAt)}.csv';
 
       // Salva no sistema de ficheiros se suportado (Desktop / Linux)
       String? savedPath;
-      if (!kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
+      if (!kIsWeb &&
+          (Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
         try {
-          final dir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+          final dir =
+              await getDownloadsDirectory() ??
+              await getApplicationDocumentsDirectory();
           final file = File('${dir.path}/$filename');
           await file.writeAsBytes(bytes);
           savedPath = file.path;
@@ -602,25 +730,21 @@ class DashboardExportService {
       await Printing.sharePdf(bytes: bytes, filename: filename);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              savedPath != null
-                  ? 'Ficheiro CSV guardado com sucesso em: $savedPath'
-                  : 'Ficheiro CSV exportado com sucesso ($filename)',
-            ),
-            backgroundColor: const Color(0xFF00C853),
-            duration: const Duration(seconds: 4),
-          ),
+        showAdminSnackBar(
+          context,
+          message: savedPath != null
+              ? 'Ficheiro CSV guardado com sucesso em: $savedPath'
+              : 'Ficheiro CSV exportado com sucesso ($filename)',
+          type: AdminSnackType.success,
+          duration: const Duration(seconds: 4),
         );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao exportar CSV: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Erro ao exportar CSV: $e',
+          type: AdminSnackType.error,
         );
       }
     }

@@ -14,6 +14,7 @@ import 'package:kupon_office_admin/repositories/dashboard_repository.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -232,15 +233,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
 
   void _onLoadFailed() {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
+    showAdminSnackBar(
+      context,
+      message:
           'Não foi possível atualizar todos os dados. A mostrar os valores '
           'mais recentes disponíveis.',
-        ),
-        backgroundColor: const Color(0xFFCF6679),
-        behavior: SnackBarBehavior.floating,
-      ),
+      type: AdminSnackType.error,
     );
   }
 
@@ -2098,7 +2096,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Luanda · Área Operacional',
+                            'Huíla · Área Operacional',
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminConfiguracoesPage extends StatefulWidget {
   const AdminConfiguracoesPage({super.key});
@@ -280,15 +281,12 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     } catch (_) {
       _loaded = false;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+        showAdminSnackBar(
+          context,
+          message:
               'Não foi possível carregar as tarifas. Atualiza bloqueado para '
               'evitar apagar os valores atuais.',
-            ),
-            backgroundColor: Color(0xFFCF6679),
-            behavior: SnackBarBehavior.floating,
-          ),
+          type: AdminSnackType.error,
         );
       }
     } finally {
@@ -299,14 +297,12 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   Future<void> _save() async {
     if (!_loaded) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+        showAdminSnackBar(
+          context,
+          message:
               'As tarifas ainda não foram carregadas — não é possível '
               'guardar. Atualize a página e tente novamente.',
-            ),
-            backgroundColor: Color(0xFFCF6679),
-          ),
+          type: AdminSnackType.error,
         );
       }
       return;
@@ -372,7 +368,11 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       final chainSpecs = <(String, String, TextEditingController)>[
         ('chain_max_pickup_km', 'raio do embarque da cadeia', _chainRadiusCtrl),
         ('chain_max_trip_age_min', 'idade máx. da solicitação', _chainAgeCtrl),
-        ('chain_reserve_seconds', 'janela do aceite em cadeia', _chainWindowCtrl),
+        (
+          'chain_reserve_seconds',
+          'janela do aceite em cadeia',
+          _chainWindowCtrl,
+        ),
       ];
       for (final (key, label, ctrl) in chainSpecs) {
         final rows = await _db.from('kupon_settings').upsert({
@@ -389,15 +389,25 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         ('cancel_delay_warn_min', 'aviso de atraso', _capWarnMinCtrl),
         ('cancel_delay_free_min', 'atraso livre', _capFreeMinCtrl),
         ('cancel_stall_min', 'sem progresso', _capStallMinCtrl),
-        ('cancel_debt_review_threshold', 'limiar de revisão', _capRevThreshCtrl),
-        ('cancel_dispute_paid_window_days', 'janela da contestação', _capDisputeDaysCtrl),
+        (
+          'cancel_debt_review_threshold',
+          'limiar de revisão',
+          _capRevThreshCtrl,
+        ),
+        (
+          'cancel_dispute_paid_window_days',
+          'janela da contestação',
+          _capDisputeDaysCtrl,
+        ),
       ];
       // Blindagem: vazio e negativos não gravam (evita taxa de 5+ km
       // zerar-se por engano e taxas negativas).
       for (final (key, label, ctrl) in capInts) {
         final v = int.tryParse(ctrl.text.trim());
         if (v == null || v < 0) {
-          failure.add('$label do cancelamento (valor inválido: "${ctrl.text.trim()}")');
+          failure.add(
+            '$label do cancelamento (valor inválido: "${ctrl.text.trim()}")',
+          );
           continue;
         }
         final rows = await _db.from('kupon_settings').upsert({
@@ -430,8 +440,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       } else {
         // vazio/negativo/ilegível em qualquer faixa: bloqueia o gravar
         // (evita taxa de 5+ km zerar-se por engano e taxas negativas).
-        failure.add('faixas de taxa do cancelamento (os 4 campos precisam '
-            'de números ≥ 0; para taxa sem cobrar escreva 0)');
+        failure.add(
+          'faixas de taxa do cancelamento (os 4 campos precisam '
+          'de números ≥ 0; para taxa sem cobrar escreva 0)',
+        );
       }
 
       for (var i = 0; i < _windowFields.length; i += 5) {
@@ -454,33 +466,31 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          failure.isEmpty
-              ? const SnackBar(
-                  content: Text(
-                    'Configurações salvas e aplicadas com sucesso!',
-                  ),
-                  backgroundColor: Color(0xFF4CAF88),
-                )
-              : SnackBar(
-                  content: Text(
-                    'Gravação FALHOU para: ${failure.join(' · ')}. '
-                    'Verifica se tua conta tem role admin na tabela users.',
-                  ),
-                  backgroundColor: const Color(0xFFCF6679),
-                  duration: const Duration(seconds: 6),
-                ),
-        );
+        if (failure.isEmpty) {
+          showAdminSnackBar(
+            context,
+            message: 'Configurações salvas e aplicadas com sucesso!',
+            type: AdminSnackType.success,
+          );
+        } else {
+          showAdminSnackBar(
+            context,
+            message:
+                'Gravação FALHOU para: ${failure.join(' · ')}. '
+                'Verifica se tua conta tem role admin na tabela users.',
+            type: AdminSnackType.error,
+            duration: const Duration(seconds: 6),
+          );
+        }
         // Recarrega para actualizar as datas de alteração e o histórico.
         if (failure.isEmpty) await _loadSettings();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao salvar configurações: $e'),
-            backgroundColor: const Color(0xFFCF6679),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Erro ao salvar configurações: $e',
+          type: AdminSnackType.error,
         );
       }
     } finally {
@@ -620,10 +630,10 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       _buildSectionHeader(
                         'Regras de Cancelamento',
                         'Faixas de taxa por deslocação do motorista, atrasos, '
-                        'deteção de sem progresso e contestação de dívidas '
-                        '(configurações cancel_fee_bands / cancel_delay_* / '
-                        'cancel_stall_min / cancel_debt_review_threshold / '
-                        'cancel_dispute_paid_window_days).',
+                            'deteção de sem progresso e contestação de dívidas '
+                            '(configurações cancel_fee_bands / cancel_delay_* / '
+                            'cancel_stall_min / cancel_debt_review_threshold / '
+                            'cancel_dispute_paid_window_days).',
                         Icons.cancel_presentation_rounded,
                       ),
                       const SizedBox(height: 14),

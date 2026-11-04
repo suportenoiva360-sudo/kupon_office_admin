@@ -5,6 +5,7 @@ import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/payment_requests_section.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminFinanceiroPage extends StatefulWidget {
   const AdminFinanceiroPage({super.key});
@@ -366,10 +367,14 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
               color: AppTheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                  color: AppTheme.outlineVariant.withValues(alpha: 0.4)),
+                color: AppTheme.outlineVariant.withValues(alpha: 0.4),
+              ),
             ),
-            child: const Icon(Icons.cancel_presentation_rounded,
-                color: Color(0xFFE5E2E1), size: 18),
+            child: const Icon(
+              Icons.cancel_presentation_rounded,
+              color: Color(0xFFE5E2E1),
+              size: 18,
+            ),
           ),
         ),
         IconButton(
@@ -1076,7 +1081,9 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text(
                   'Cancelar',
-                  style: GoogleFonts.spaceGrotesk(color: const Color(0xFFE2BFB0)),
+                  style: GoogleFonts.spaceGrotesk(
+                    color: const Color(0xFFE2BFB0),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1112,21 +1119,19 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
           .update({'status': 'completed'})
           .eq('id', txId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Saque aprovado com sucesso!'),
-            backgroundColor: Color(0xFF4CAF88),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Saque aprovado com sucesso!',
+          type: AdminSnackType.success,
         );
       }
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao aprovar saque: $e'),
-            backgroundColor: const Color(0xFFCF6679),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Erro ao aprovar saque: $e',
+          type: AdminSnackType.error,
         );
       }
     }
@@ -1142,20 +1147,18 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
     try {
       await action();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(successMsg),
-          backgroundColor: const Color(0xFF4CAF88),
-        ),
+      showAdminSnackBar(
+        context,
+        message: successMsg,
+        type: AdminSnackType.success,
       );
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro: $e'),
-          backgroundColor: const Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Erro: $e',
+        type: AdminSnackType.error,
       );
     } finally {
       if (mounted) setState(() => _busyKey = null);
@@ -1617,7 +1620,7 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   final double extent;
 
   _SliverTabBarDelegate(this.tabBar)
-      : extent = tabBar.preferredSize.height.clamp(48.0, double.infinity);
+    : extent = tabBar.preferredSize.height.clamp(48.0, double.infinity);
 
   @override
   double get minExtent => extent;

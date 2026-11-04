@@ -6,6 +6,7 @@ import 'package:kupon_office_admin/app/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/core/auth/auth_service.dart';
 import 'package:kupon_office_admin/core/providers/user_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -33,9 +34,11 @@ class _LoginPageState extends State<LoginPage> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(
+      showAdminSnackBar(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Preencha todos os campos')));
+        message: 'Preencha todos os campos',
+        type: AdminSnackType.warning,
+      );
       return;
     }
 
@@ -54,14 +57,18 @@ class _LoginPageState extends State<LoginPage> {
         if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email ou senha incorretos')),
+        showAdminSnackBar(
+          context,
+          message: 'Email ou senha incorretos',
+          type: AdminSnackType.error,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao entrar: ${e.toString()}')),
+      showAdminSnackBar(
+        context,
+        message: 'Erro ao entrar: ${e.toString()}',
+        type: AdminSnackType.error,
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

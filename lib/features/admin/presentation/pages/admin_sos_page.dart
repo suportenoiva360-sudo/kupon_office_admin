@@ -4,6 +4,7 @@ import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminSosPage extends StatefulWidget {
   const AdminSosPage({super.key});
@@ -783,20 +784,18 @@ class _AdminSosPageState extends State<AdminSosPage> {
           .update({'status': 'resolved'})
           .eq('id', alertId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Alerta resolvido.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Alerta resolvido.',
+        type: AdminSnackType.success,
       );
       _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao resolver alerta: $e'),
-          backgroundColor: const Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Erro ao resolver alerta: $e',
+        type: AdminSnackType.error,
       );
     }
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 Future<bool?> showAddDriverDialog(BuildContext context) {
   return showDialog<bool>(
@@ -77,13 +78,10 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            error ? AppTheme.errorContainer : const Color(0xFF2E7D32),
-      ),
+    showAdminSnackBar(
+      context,
+      message: msg,
+      type: error ? AdminSnackType.error : AdminSnackType.success,
     );
   }
 
@@ -94,8 +92,10 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
     final password = _passwordCtrl.text;
 
     if (name.isEmpty || email.isEmpty || phone.isEmpty || password.length < 6) {
-      _snack('Preencha nome, email, telefone e uma palavra-passe (mín. 6).',
-          error: true);
+      _snack(
+        'Preencha nome, email, telefone e uma palavra-passe (mín. 6).',
+        error: true,
+      );
       return;
     }
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
@@ -182,8 +182,8 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
       final msg = e is AuthException
           ? e.message
           : (e.toString().contains('already')
-              ? 'Já existe uma conta com este email.'
-              : 'Falha ao criar o motorista.');
+                ? 'Já existe uma conta com este email.'
+                : 'Falha ao criar o motorista.');
       _snack(msg, error: true);
     }
   }
@@ -192,9 +192,7 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppTheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
         child: Column(
@@ -243,8 +241,9 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
                         color: AppTheme.primaryContainer.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color:
-                              AppTheme.primaryContainer.withValues(alpha: 0.3),
+                          color: AppTheme.primaryContainer.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
                       ),
                       child: Row(
@@ -273,19 +272,32 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
                     const SizedBox(height: 20),
                     _sectionLabel('DADOS DA CONTA'),
                     const SizedBox(height: 10),
-                    _buildField(_nameCtrl, 'Nome completo',
-                        icon: Icons.person_outline_rounded),
+                    _buildField(
+                      _nameCtrl,
+                      'Nome completo',
+                      icon: Icons.person_outline_rounded,
+                    ),
                     const SizedBox(height: 10),
-                    _buildField(_emailCtrl, 'Email',
-                        icon: Icons.mail_outline_rounded,
-                        keyboardType: TextInputType.emailAddress),
+                    _buildField(
+                      _emailCtrl,
+                      'Email',
+                      icon: Icons.mail_outline_rounded,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
                     const SizedBox(height: 10),
-                    _buildField(_phoneCtrl, 'Telefone',
-                        icon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone),
+                    _buildField(
+                      _phoneCtrl,
+                      'Telefone',
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                    ),
                     const SizedBox(height: 10),
-                    _buildField(_passwordCtrl, 'Palavra-passe inicial',
-                        icon: Icons.lock_outline_rounded, obscure: true),
+                    _buildField(
+                      _passwordCtrl,
+                      'Palavra-passe inicial',
+                      icon: Icons.lock_outline_rounded,
+                      obscure: true,
+                    ),
                     const SizedBox(height: 20),
                     _sectionLabel('VEÍCULO'),
                     const SizedBox(height: 10),
@@ -303,18 +315,30 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
                     const SizedBox(height: 10),
                     _buildProvinceRow(),
                     const SizedBox(height: 10),
-                    _buildField(_modelCtrl, 'Modelo do veículo',
-                        icon: Icons.model_training_rounded),
+                    _buildField(
+                      _modelCtrl,
+                      'Modelo do veículo',
+                      icon: Icons.model_training_rounded,
+                    ),
                     const SizedBox(height: 10),
-                    _buildField(_colorCtrl, 'Cor',
-                        icon: Icons.color_lens_outlined),
+                    _buildField(
+                      _colorCtrl,
+                      'Cor',
+                      icon: Icons.color_lens_outlined,
+                    ),
                     const SizedBox(height: 10),
-                    _buildField(_plateCtrl, 'Matrícula',
-                        icon: Icons.confirmation_number_outlined),
+                    _buildField(
+                      _plateCtrl,
+                      'Matrícula',
+                      icon: Icons.confirmation_number_outlined,
+                    ),
                     const SizedBox(height: 10),
-                    _buildField(_yearCtrl, 'Ano',
-                        icon: Icons.calendar_today_outlined,
-                        keyboardType: TextInputType.number),
+                    _buildField(
+                      _yearCtrl,
+                      'Ano',
+                      icon: Icons.calendar_today_outlined,
+                      keyboardType: TextInputType.number,
+                    ),
                     const SizedBox(height: 20),
                     Row(
                       children: [
@@ -325,9 +349,7 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
                                 : () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppTheme.onSurfaceVariant,
-                              side: BorderSide(
-                                color: AppTheme.outlineVariant,
-                              ),
+                              side: BorderSide(color: AppTheme.outlineVariant),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -354,8 +376,9 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primaryContainer
-                                        .withValues(alpha: 0.3),
+                                    color: AppTheme.primaryContainer.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     blurRadius: 14,
                                     offset: const Offset(0, 5),
                                   ),
@@ -427,7 +450,10 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
         controller: ctrl,
         obscureText: obscure,
         keyboardType: keyboardType,
-        style: GoogleFonts.spaceGrotesk(fontSize: 14, color: AppTheme.onSurface),
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 14,
+          color: AppTheme.onSurface,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.spaceGrotesk(
@@ -435,10 +461,17 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
             color: AppTheme.onSurfaceVariant.withValues(alpha: 0.45),
           ),
           prefixIcon: icon != null
-              ? Icon(icon, size: 18, color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5))
+              ? Icon(
+                  icon,
+                  size: 18,
+                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+                )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -462,7 +495,11 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5)),
+          Icon(
+            icon,
+            size: 18,
+            color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: DropdownButtonHideUnderline(
@@ -484,10 +521,12 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
                   }
                 },
                 items: options
-                    .map((o) => DropdownMenuItem(
-                          value: o.label,
-                          child: Text(o.label),
-                        ))
+                    .map(
+                      (o) => DropdownMenuItem(
+                        value: o.label,
+                        child: Text(o.label),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -509,8 +548,11 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
       ),
       child: Row(
         children: [
-          Icon(Icons.location_city_outlined,
-              size: 18, color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5)),
+          Icon(
+            Icons.location_city_outlined,
+            size: 18,
+            color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: DropdownButtonHideUnderline(
@@ -529,17 +571,22 @@ class _AdminAddDriverDialogState extends State<AdminAddDriverDialog> {
                   Icons.expand_more_rounded,
                   color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
-                style: GoogleFonts.spaceGrotesk(fontSize: 14, color: AppTheme.onSurface),
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  color: AppTheme.onSurface,
+                ),
                 onChanged: (v) => setState(() => _provinceId = v),
                 items: [
                   const DropdownMenuItem<String?>(
                     value: null,
                     child: Text('Sem província'),
                   ),
-                  ..._provinces.map((p) => DropdownMenuItem<String?>(
-                        value: p['id'] as String?,
-                        child: Text(p['name'] as String? ?? ''),
-                      )),
+                  ..._provinces.map(
+                    (p) => DropdownMenuItem<String?>(
+                      value: p['id'] as String?,
+                      child: Text(p['name'] as String? ?? ''),
+                    ),
+                  ),
                 ],
               ),
             ),

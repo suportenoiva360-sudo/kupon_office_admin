@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/app/widgets/kupon_loader.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 /// 3.1 — Fila de aprovação das recompensas por convite.
 /// Lista `referral_rewards` (RLS admin) com realtime; aprovar/rejeitar
@@ -88,7 +89,7 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
       reason = await _askReason(reward);
       if (reason == null) return; // cancelado
       if (reason.trim().isEmpty) {
-        _snack('O motivo da rejeição é obrigatório.', const Color(0xFFCF6679));
+        _snack('O motivo da rejeição é obrigatório.', AdminSnackType.warning);
         return;
       }
     }
@@ -103,10 +104,8 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
       );
       if (!mounted) return;
       _snack(
-        approve
-            ? 'Recompensa aprovada e creditada.'
-            : 'Recompensa rejeitada.',
-        const Color(0xFF4CAF88),
+        approve ? 'Recompensa aprovada e creditada.' : 'Recompensa rejeitada.',
+        approve ? AdminSnackType.success : AdminSnackType.warning,
       );
       await _load();
     } catch (e) {
@@ -116,7 +115,7 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
         msg.contains('já decidida')
             ? 'Essa recompensa já foi decidida por outro admin.'
             : 'Erro ao decidir a recompensa.',
-        const Color(0xFFCF6679),
+        AdminSnackType.error,
       );
       await _load();
     }
@@ -128,9 +127,7 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C1B1B),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(
           'Rejeitar recompensa',
           style: GoogleFonts.spaceGrotesk(
@@ -168,11 +165,16 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar', style: TextStyle(color: Color(0xFF9C9896))),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFF9C9896)),
+            ),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF93000A)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF93000A),
+            ),
             child: const Text('Rejeitar'),
           ),
         ],
@@ -180,14 +182,8 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
     );
   }
 
-  void _snack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _snack(String msg, AdminSnackType type) {
+    showAdminSnackBar(context, message: msg, type: type);
   }
 
   @override
@@ -234,7 +230,9 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
           decoration: BoxDecoration(
             color: AppTheme.primaryContainer.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.primaryContainer.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: AppTheme.primaryContainer.withValues(alpha: 0.3),
+            ),
           ),
           child: const Icon(
             Icons.card_giftcard_rounded,
@@ -261,7 +259,10 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
                   const SizedBox(width: 8),
                   if (pending > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF93000A).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
@@ -345,7 +346,9 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
           style: TextStyle(
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
-            color: active ? AppTheme.primaryContainer : AppTheme.onSurfaceVariant,
+            color: active
+                ? AppTheme.primaryContainer
+                : AppTheme.onSurfaceVariant,
           ),
         ),
       ),
@@ -371,10 +374,7 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
               style: const TextStyle(fontSize: 12.5, color: Color(0xFFFFB4AB)),
             ),
           ),
-          TextButton(
-            onPressed: _load,
-            child: const Text('Tentar de novo'),
-          ),
+          TextButton(onPressed: _load, child: const Text('Tentar de novo')),
         ],
       ),
     );
@@ -414,8 +414,7 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
   Widget _buildRewardCard(Map<String, dynamic> r) {
     final referrer = (r['referrer'] as Map?) ?? const {};
     final referred = (r['referred'] as Map?) ?? const {};
-    final pending =
-        r['status'] == 'pending' || r['status'] == 'in_review';
+    final pending = r['status'] == 'pending' || r['status'] == 'in_review';
     final created = DateTime.tryParse('${r['created_at'] ?? ''}');
 
     return Container(
@@ -431,9 +430,7 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: _party('CONVIDANTE (recebe)', referrer),
-              ),
+              Expanded(child: _party('CONVIDANTE (recebe)', referrer)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Icon(
@@ -442,16 +439,17 @@ class _AdminRecompensasPageState extends State<AdminRecompensasPage> {
                   color: const Color(0xFFE2BFB0).withValues(alpha: 0.4),
                 ),
               ),
-              Expanded(
-                child: _party('CONVIDADO', referred),
-              ),
+              Expanded(child: _party('CONVIDADO', referred)),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryContainer.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),

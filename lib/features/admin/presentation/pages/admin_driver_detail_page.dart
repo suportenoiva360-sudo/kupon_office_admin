@@ -5,8 +5,10 @@ import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/app/widgets/profile_cover_header.dart';
 import 'package:kupon_office_admin/features/admin/presentation/widgets/admin_driver_documents.dart';
 import 'package:kupon_office_admin/repositories/driver_repository.dart';
-import 'package:kupon_office_admin/repositories/dashboard_repository.dart' show formatNumber;
+import 'package:kupon_office_admin/repositories/dashboard_repository.dart'
+    show formatNumber;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminDriverDetailPage extends StatefulWidget {
   final String driverId;
@@ -93,24 +95,20 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
         _driver?['is_approved'] = approve;
         _saving = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            approve ? 'Motorista aprovado com sucesso' : 'Aprovação revogada',
-          ),
-          backgroundColor: approve
-              ? const Color(0xFF4CAF88)
-              : const Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: approve
+            ? 'Motorista aprovado com sucesso'
+            : 'Aprovação revogada',
+        type: approve ? AdminSnackType.success : AdminSnackType.warning,
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao atualizar aprovação: $e'),
-          backgroundColor: const Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Erro ao atualizar aprovação: $e',
+        type: AdminSnackType.error,
       );
     }
   }
@@ -338,8 +336,11 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
   Widget _buildStatsRow(String rating, int totalTrips) {
     final freeRides = _driver?['free_trips_remaining'] as int? ?? 0;
     final packageId = _driver?['package_id'] as String?;
-    final packageExpires = DateTime.tryParse('${_driver?['package_expires'] ?? ''}');
-    final packageActive = packageId != null &&
+    final packageExpires = DateTime.tryParse(
+      '${_driver?['package_expires'] ?? ''}',
+    );
+    final packageActive =
+        packageId != null &&
         packageId.isNotEmpty &&
         (packageExpires == null || packageExpires.isAfter(DateTime.now()));
     final packageUsed = _driver?['package_trips_used'] as int? ?? 0;
@@ -840,8 +841,7 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
                             context,
                             driverId: widget.driverId,
                             userId: user['id'] as String?,
-                            driverName:
-                                user['name'] as String? ?? 'Motorista',
+                            driverName: user['name'] as String? ?? 'Motorista',
                             onApprove: () => _toggleApproval(true),
                           );
                         }

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
-/// Secção "Pagamentos" do pouco de financeiro — pedidos de transferência /
-/// mobile money / multicaixa express que precisam de aprovação do admin
-/// para SE reflectirem na conta do utilizador.
+/// Secção "Pagamentos" do pouco de financeiro — pedidos de recarga/saque
+/// da carteira por mobile money ou dinheiro (na sede) que precisam de aprovação
+/// do admin para se reflectirem na conta do utilizador.
+///
+/// Política de métodos do KupON: só 4 — assinatura (cotas consumidas por Km),
+/// dinheiro, mobile money e carteira. Nesta secção apenas mobile money e
+/// dinheiro são válidos; qualquer outro método aparece marcado como fora da
+/// política para o admin rejeitar.
 ///
 /// Carrega [payment_requests] com status 'pending' (uma vez, com guard
 /// `_initialized`), subscreve realtime de inserção para novos pedidos e
@@ -43,8 +49,10 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
     try {
       final rows = await _client
           .from('payment_requests')
-          .select('id,user_id,method,direction,amount,reference,status,'
-              'created_at,users!inner(name,phone)')
+          .select(
+            'id,user_id,method,direction,amount,reference,status,'
+            'created_at,users!inner(name,phone)',
+          )
           .eq('status', 'pending')
           .order('created_at', ascending: false)
           .limit(50);
@@ -88,34 +96,33 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
     if (_busyId != null) return;
     setState(() => _busyId = id as String?);
     try {
-      await _client.rpc('decide_payment_request', params: {
-        'p_request_id': id,
-        'p_decision': decision, // 'approved' | 'rejected'
-        'p_admin_id': widget.adminId,
-      });
+      await _client.rpc(
+        'decide_payment_request',
+        params: {
+          'p_request_id': id,
+          'p_decision': decision, // 'approved' | 'rejected'
+          'p_admin_id': widget.adminId,
+        },
+      );
       if (!mounted) return;
       setState(() => _busyId = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            decision == 'approved'
-                ? 'Pagamento aprovado — crédito reflectido na conta.'
-                : 'Pagamento rejeitado.',
-          ),
-          backgroundColor: decision == 'approved'
-              ? const Color(0xFF0E5C46)
-              : const Color(0xFF8A3F2E),
-        ),
+      showAdminSnackBar(
+        context,
+        message: decision == 'approved'
+            ? 'Pagamento aprovado — crédito reflectido na conta.'
+            : 'Pagamento rejeitado.',
+        type: decision == 'approved'
+            ? AdminSnackType.success
+            : AdminSnackType.warning,
       );
       await _loadPending();
     } catch (e) {
       if (!mounted) return;
       setState(() => _busyId = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao decidir pagamento: $e'),
-          backgroundColor: const Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Erro ao decidir pagamento: $e',
+        type: AdminSnackType.error,
       );
     }
   }
@@ -160,25 +167,25 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
 
   Widget _buildRequestCard(Map<String, dynamic> req) {
     final users = (req['users'] as Map?) ?? const {};
-    final name = users['name'] as String? ?? 'Utilizador';
+    final name = users['name'] as String? ?? ' Utilizador';
     final method = req['method'] as String? ?? '';
     final amount = (req['amount'] as num?)?.toInt() ?? 0;
     final reference = req['reference'] as String? ?? '—';
 
-    final (methodLabel, icon) = switch (method) {
-      'bank_transfer' => (
-          'Transferência bancária',
-          Icons.account_balance_rounded,
-        ),
-      'mobile_money' => (
-          'Mobile Money (M-Pesa / EMIS)',
-          Icons.phone_iphone_rounded,
-        ),
-      'multicaixa_express' => (
-          'Multicaixa Express',
-          Icons.credit_card_rounded,
-        ),
-      _ => (method, Icons.currency_exchange_rounded),
+    // Política: só mobile money e dinheiro entram como recarga validada.
+    // 'assinatura' e 'carteira' são métodos de corrida, nunca de top-up.
+    final (methodLabel, icon, isPolicyMethod) = switch (method.toLowerCase()) {
+      'mobile_money' || 'mobile money' => (
+        'Mobile Money (M-Pesa / EMIS)',
+        Icons.phone_iphone_rounded,
+        true,
+      ),
+      'cash' || 'dinheiro' => ('Dinheiro', Icons.payments_rounded, true),
+      _ => (
+        method.isEmpty ? 'Método não definido' : '$method — FORA DA POLÍTICA',
+        Icons.currency_exchange_rounded,
+        false,
+      ),
     };
 
     final isWithdrawal = req['direction'] == 'saque';
@@ -212,11 +219,24 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
                     const SizedBox(height: 2),
                     Text(
                       '$methodLabel • ${isWithdrawal ? "Saque" : "Recarga"}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFFB0A8A0),
+                        color: isPolicyMethod
+                            ? const Color(0xFFB0A8A0)
+                            : const Color(0xFFCF6679),
                       ),
                     ),
+                    if (!isPolicyMethod) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Recusar — só Dinheiro, Mobile Money, Assinatura ou Carteira.',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFCF6679).withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -242,8 +262,9 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               OutlinedButton.icon(
-                onPressed:
-                    _busyId == null ? () => _decide(req, 'rejected') : null,
+                onPressed: _busyId == null
+                    ? () => _decide(req, 'rejected')
+                    : null,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFCF6679),
                   side: const BorderSide(color: Color(0xFF8A3F2E)),
@@ -253,10 +274,13 @@ class _PaymentRequestsSectionState extends State<PaymentRequestsSection> {
               ),
               const SizedBox(width: 10),
               FilledButton.icon(
-                onPressed:
-                    _busyId == null ? () => _decide(req, 'approved') : null,
+                onPressed: (_busyId == null && isPolicyMethod)
+                    ? () => _decide(req, 'approved')
+                    : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF0E5C46),
+                  backgroundColor: isPolicyMethod
+                      ? const Color(0xFF0E5C46)
+                      : const Color(0xFF3A3A3A),
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.check_rounded, size: 18),

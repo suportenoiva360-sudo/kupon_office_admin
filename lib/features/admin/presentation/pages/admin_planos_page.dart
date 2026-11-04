@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 class AdminPlanosPage extends StatefulWidget {
   const AdminPlanosPage({super.key});
@@ -59,9 +60,13 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
     } else if (_statusFilter == 'inactive') {
       list = list.where((p) => p['is_active'] != true).toList();
     } else if (_statusFilter == 'monthly') {
-      list = list.where((p) => (p['period'] as String? ?? 'monthly') == 'monthly').toList();
+      list = list
+          .where((p) => (p['period'] as String? ?? 'monthly') == 'monthly')
+          .toList();
     } else if (_statusFilter == 'annual') {
-      list = list.where((p) => (p['period'] as String? ?? 'monthly') == 'annual').toList();
+      list = list
+          .where((p) => (p['period'] as String? ?? 'monthly') == 'annual')
+          .toList();
     }
 
     return list;
@@ -70,10 +75,9 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
   @override
   Widget build(BuildContext context) {
     final activeCount = _plans.where((p) => p['is_active'] == true).length;
-    final totalQuota = _plans.fold<int>(
-      0,
-      (sum, p) => sum + ((p['trip_quota'] as num?)?.toInt() ?? 0),
-    );
+    final cotaPlanCount = _plans.where((plan) {
+      return (plan['subscription_cotas'] as num? ?? 0) > 0;
+    }).length;
     final avgPrice = _plans.isNotEmpty
         ? (_plans.fold<int>(
                 0,
@@ -99,7 +103,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                     children: [
                       _buildHeaderBar(),
                       const SizedBox(height: 18),
-                      _buildKpiSection(activeCount, totalQuota, avgPrice),
+                      _buildKpiSection(activeCount, cotaPlanCount, avgPrice),
                       const SizedBox(height: 18),
                       _buildSearchBarAndFilter(),
                     ],
@@ -193,7 +197,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'PASSES KUPON+',
+                      'PLANOS COM COTAS',
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
@@ -206,7 +210,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Modelo "Pague uma vez, viaje sempre": gestão de cotas e tarifas',
+                'Saldo de cotas por ciclo, consumido conforme os quilômetros da corrida',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
@@ -238,7 +242,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
     );
   }
 
-  Widget _buildKpiSection(int active, int totalQuota, int avgPrice) {
+  Widget _buildKpiSection(int active, int cotaPlanCount, int avgPrice) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 650;
@@ -268,11 +272,11 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
               Row(
                 children: [
                   _kpiCard(
-                    title: 'COTA ACUMULADA',
-                    value: '$totalQuota',
-                    icon: Icons.confirmation_number_rounded,
+                    title: 'PLANOS COM COTAS',
+                    value: '$cotaPlanCount',
+                    icon: Icons.route_rounded,
                     color: const Color(0xFF5AB0FF),
-                    subtitle: 'Viagens em catálogo',
+                    subtitle: 'Benefício configurado',
                   ),
                   const SizedBox(width: 12),
                   _kpiCard(
@@ -307,11 +311,11 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
             ),
             const SizedBox(width: 12),
             _kpiCard(
-              title: 'COTA ACUMULADA',
-              value: '$totalQuota',
-              icon: Icons.confirmation_number_rounded,
+              title: 'PLANOS COM COTAS',
+              value: '$cotaPlanCount',
+              icon: Icons.route_rounded,
               color: const Color(0xFF5AB0FF),
-              subtitle: 'Viagens em catálogo',
+              subtitle: 'Benefício configurado',
             ),
             const SizedBox(width: 12),
             _kpiCard(
@@ -468,10 +472,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
                   value: 'monthly',
                   child: Text('Planos Mensais'),
                 ),
-                DropdownMenuItem(
-                  value: 'annual',
-                  child: Text('Planos Anuais'),
-                ),
+                DropdownMenuItem(value: 'annual', child: Text('Planos Anuais')),
               ],
               onChanged: (v) {
                 if (v != null) setState(() => _statusFilter = v);
@@ -515,8 +516,8 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
   Widget _buildPlanCard(Map<String, dynamic> plan) {
     final name = plan['name'] as String? ?? '–';
     final price = (plan['price'] as num?)?.toInt() ?? 0;
-    final credits = (plan['credits'] as num?)?.toInt() ?? 0;
-    final tripQuota = (plan['trip_quota'] as num?)?.toInt() ?? 0;
+    final subscriptionCotas =
+        (plan['subscription_cotas'] as num?)?.toInt() ?? 0;
     final period = (plan['period'] as String? ?? 'monthly') == 'annual'
         ? 'Anual (12 meses)'
         : 'Mensal (30 dias)';
@@ -726,17 +727,10 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
               ),
               const SizedBox(width: 10),
               _valuePill(
-                'Cota de Viagens',
-                tripQuota > 0 ? '$tripQuota viagens' : 'Sem cota',
+                'Cotas por ciclo',
+                subscriptionCotas > 0 ? _fmt(subscriptionCotas) : 'Desativado',
                 const Color(0xFF5AB0FF),
-                Icons.directions_car_rounded,
-              ),
-              const SizedBox(width: 10),
-              _valuePill(
-                'Créditos Kup',
-                '${_fmt(credits)} Kup',
-                const Color(0xFF4CAF88),
-                Icons.currency_exchange_rounded,
+                Icons.route_rounded,
               ),
             ],
           ),
@@ -904,9 +898,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
           .eq('id', plan['id']);
       if (!mounted) return;
       _showSnack(
-        willRecommend
-            ? 'Plano recomendado na loja.'
-            : 'Recomendação removida.',
+        willRecommend ? 'Plano recomendado na loja.' : 'Recomendação removida.',
       );
       _load();
     } catch (e) {
@@ -916,12 +908,10 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
 
   void _showSnack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: error ? const Color(0xFFCF6679) : null,
-        behavior: SnackBarBehavior.floating,
-      ),
+    showAdminSnackBar(
+      context,
+      message: msg,
+      type: error ? AdminSnackType.error : AdminSnackType.success,
     );
   }
 
@@ -940,10 +930,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
           );
           _load();
         } catch (e) {
-          _showSnack(
-            'Erro ao atualizar plano: ${_errMsg(e)}',
-            error: true,
-          );
+          _showSnack('Erro ao atualizar plano: ${_errMsg(e)}', error: true);
         }
         break;
       case 'recommend':
@@ -1017,10 +1004,7 @@ class _AdminPlanosPageState extends State<AdminPlanosPage> {
         if (!mounted) return;
         if (ok == true) {
           try {
-            await _db
-                .from('subscription_plans')
-                .delete()
-                .eq('id', plan['id']);
+            await _db.from('subscription_plans').delete().eq('id', plan['id']);
             if (!mounted) return;
             _showSnack('Plano excluído.');
             _load();
@@ -1093,8 +1077,7 @@ class _PlanFormSheet extends StatefulWidget {
 class _PlanFormSheetState extends State<_PlanFormSheet> {
   final _nameCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
-  final _creditsCtrl = TextEditingController();
-  final _tripQuotaCtrl = TextEditingController();
+  final _subscriptionCotasCtrl = TextEditingController(text: '0');
   final _periodCtrl = TextEditingController(text: 'monthly');
   final _descCtrl = TextEditingController();
   final _featuresCtrl = TextEditingController();
@@ -1108,8 +1091,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
       final p = widget.plan!;
       _nameCtrl.text = p['name'] ?? '';
       _priceCtrl.text = '${p['price'] ?? ''}';
-      _creditsCtrl.text = '${p['credits'] ?? ''}';
-      _tripQuotaCtrl.text = '${p['trip_quota'] ?? ''}';
+      _subscriptionCotasCtrl.text = '${p['subscription_cotas'] ?? 0}';
       _periodCtrl.text = p['period'] as String? ?? 'monthly';
       _descCtrl.text = p['description'] ?? '';
       _recommended = p['is_recommended'] as bool? ?? false;
@@ -1124,8 +1106,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
   void dispose() {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
-    _creditsCtrl.dispose();
-    _tripQuotaCtrl.dispose();
+    _subscriptionCotasCtrl.dispose();
     _periodCtrl.dispose();
     _descCtrl.dispose();
     _featuresCtrl.dispose();
@@ -1134,11 +1115,20 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
 
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty || _priceCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, preencha o nome e o preço do plano.'),
-          backgroundColor: Color(0xFFCF6679),
-        ),
+      showAdminSnackBar(
+        context,
+        message: 'Por favor, preencha o nome e o preço do plano.',
+        type: AdminSnackType.error,
+      );
+      return;
+    }
+
+    final subscriptionCotas = int.tryParse(_subscriptionCotasCtrl.text.trim());
+    if (subscriptionCotas == null || subscriptionCotas < 0) {
+      showAdminSnackBar(
+        context,
+        message: 'Informe um saldo de cotas válido, igual ou maior que zero.',
+        type: AdminSnackType.error,
       );
       return;
     }
@@ -1148,9 +1138,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
       await widget.onSave({
         'name': _nameCtrl.text.trim(),
         'price': num.tryParse(_priceCtrl.text) ?? 0,
-        'credits': num.tryParse(_creditsCtrl.text) ?? 0,
-        if (_tripQuotaCtrl.text.isNotEmpty)
-          'trip_quota': int.tryParse(_tripQuotaCtrl.text) ?? 0,
+        'subscription_cotas': subscriptionCotas,
         'period': _periodCtrl.text == 'annual' ? 'annual' : 'monthly',
         if (_descCtrl.text.isNotEmpty) 'description': _descCtrl.text.trim(),
         'is_active': true,
@@ -1168,11 +1156,10 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao salvar plano: $e'),
-            backgroundColor: const Color(0xFFCF6679),
-          ),
+        showAdminSnackBar(
+          context,
+          message: 'Erro ao salvar plano: $e',
+          type: AdminSnackType.error,
         );
       }
     }
@@ -1319,7 +1306,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'COTA DE VIAGENS/MÊS',
+                        'COTAS DA ASSINATURA POR CICLO',
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -1329,7 +1316,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                       ),
                       const SizedBox(height: 6),
                       TextField(
-                        controller: _tripQuotaCtrl,
+                        controller: _subscriptionCotasCtrl,
                         keyboardType: TextInputType.number,
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 13,
@@ -1337,7 +1324,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                           color: const Color(0xFFE5E2E1),
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Ex: 10, 30, 60',
+                          hintText: 'Ex: 500',
                           hintStyle: GoogleFonts.spaceGrotesk(
                             fontSize: 12,
                             color: const Color(
@@ -1373,64 +1360,16 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
               ],
             ),
             const SizedBox(height: 16),
+            Text(
+              'As cotas são consumidas por corrida conforme a distância, usando as faixas de cotas configuradas no sistema. O saldo é renovado a cada ciclo do plano.',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'CRÉDITOS INCLUÍDOS (Kup)',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _creditsCtrl,
-                        keyboardType: TextInputType.number,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 13,
-                          color: const Color(0xFFE5E2E1),
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Ex: 15000',
-                          hintStyle: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            color: const Color(
-                              0xFFE2BFB0,
-                            ).withValues(alpha: 0.35),
-                          ),
-                          fillColor: AppTheme.surfaceContainerLowest,
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF2A2A2A),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF2A2A2A),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: AppTheme.primaryContainer,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1522,8 +1461,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                 color: const Color(0xFFE5E2E1),
               ),
               decoration: InputDecoration(
-                hintText:
-                    'Ex: Cota de 30 viagens por mês, suporte prioritário e bônus',
+                hintText: 'Ex: 500 cotas por mês, suporte prioritário e bónus',
                 hintStyle: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   color: const Color(0xFFE2BFB0).withValues(alpha: 0.35),
@@ -1631,9 +1569,7 @@ class _PlanFormSheetState extends State<_PlanFormSheet> {
                     'Ex: 10 corridas/mês\nDesconto de 5%\nSuporte por chat',
                 hintStyle: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
-                  color: const Color(
-                    0xFFE2BFB0,
-                  ).withValues(alpha: 0.35),
+                  color: const Color(0xFFE2BFB0).withValues(alpha: 0.35),
                 ),
                 fillColor: AppTheme.surfaceContainerLowest,
                 filled: true,

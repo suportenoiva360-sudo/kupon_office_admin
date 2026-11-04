@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/providers/user_provider.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/core/routes/app_router.dart'
     show invalidateAdminCache;
@@ -120,26 +121,16 @@ class _AdminShellState extends State<AdminShell> {
       case 'trip':
         AdminAlertSounds.playNewRequest();
     }
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          item.title,
-          style: GoogleFonts.spaceGrotesk(fontSize: 13, color: Colors.white),
-        ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1C1B1B),
-        duration: const Duration(seconds: 5),
-        action: SnackBarAction(
-          label: 'Ver',
-          textColor: AppTheme.primaryContainer,
-          onPressed: () {
-            if (mounted) context.go(item.route);
-          },
-        ),
-      ),
+    if (!mounted) return;
+    showAdminSnackBar(
+      context,
+      message: item.title,
+      type: AdminSnackType.info,
+      duration: const Duration(seconds: 5),
+      actionLabel: 'Ver',
+      onAction: () {
+        if (mounted) context.go(item.route);
+      },
     );
   }
 
@@ -204,8 +195,10 @@ class _AdminShellState extends State<AdminShell> {
                 const Divider(color: Color(0xFF2A2A2A), height: 1),
                 const SizedBox(height: 16),
                 GestureDetector(
-                  onTap: () =>
-                      _nav.goBranch(_sosIndex, initialLocation: _nav.currentIndex == _sosIndex),
+                  onTap: () => _nav.goBranch(
+                    _sosIndex,
+                    initialLocation: _nav.currentIndex == _sosIndex,
+                  ),
                   child: Container(
                     height: 48,
                     width: double.infinity,
@@ -619,9 +612,7 @@ class _AdminShellState extends State<AdminShell> {
                         Icon(
                           Icons.notifications_none_rounded,
                           size: 32,
-                          color: const Color(
-                            0xFFE2BFB0,
-                          ).withValues(alpha: 0.4),
+                          color: const Color(0xFFE2BFB0).withValues(alpha: 0.4),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -678,10 +669,7 @@ class _AdminShellState extends State<AdminShell> {
 
   /// Banner de erro do feed (permite recarregar sem fechar o menu).
   /// Chips do sino: Todas / Ação / Suporte / Pagamentos / Novidades.
-  Widget _buildActivityFilterChips(
-    AdminActivityCenter center,
-    String active,
-  ) {
+  Widget _buildActivityFilterChips(AdminActivityCenter center, String active) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: SingleChildScrollView(
@@ -884,9 +872,7 @@ class _AdminShellState extends State<AdminShell> {
                         _timeAgo(item.at),
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 10,
-                          color: const Color(
-                            0xFFE2BFB0,
-                          ).withValues(alpha: 0.5),
+                          color: const Color(0xFFE2BFB0).withValues(alpha: 0.5),
                         ),
                       ),
                     ],

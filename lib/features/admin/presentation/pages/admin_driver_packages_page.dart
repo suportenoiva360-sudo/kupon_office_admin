@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
 
 /// KupON v2.1 — Gestão de pacotes do motorista + configuração global
 /// (spec kupon_specs.md §4/§5 e §15.6: preços, viagens grátis, bónus, cotas).
@@ -53,27 +54,17 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor:
-            error ? const Color(0xFFCF6679) : const Color(0xFF4CAF88),
-      ),
+    showAdminSnackBar(
+      context,
+      message: msg,
+      type: error ? AdminSnackType.error : AdminSnackType.success,
     );
   }
 
   String _fmtKz(int v) => v.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+    (m) => '${m[1]}.',
+  );
 
   // ---------------------------------------------------------------
   // Pacotes CRUD Form (Dialog Responsivo)
@@ -81,11 +72,12 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
   Future<void> _openPackageForm([Map<String, dynamic>? pkg]) async {
     final nameCtrl = TextEditingController(text: pkg?['name'] ?? '');
     final priceCtrl = TextEditingController(
-        text: pkg != null ? '${pkg['price']}' : '');
+      text: pkg != null ? '${pkg['price']}' : '',
+    );
     final daysCtrl = TextEditingController(
-        text: '${pkg?['duration_days'] ?? 30}');
-    final quotaCtrl = TextEditingController(
-        text: '${pkg?['trip_quota'] ?? 0}');
+      text: '${pkg?['duration_days'] ?? 30}',
+    );
+    final quotaCtrl = TextEditingController(text: '${pkg?['trip_quota'] ?? 0}');
     var isActive = pkg?['is_active'] as bool? ?? true;
 
     final saved = await showDialog<bool>(
@@ -94,7 +86,10 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Container(
@@ -122,7 +117,9 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryContainer.withValues(alpha: 0.15),
+                          color: AppTheme.primaryContainer.withValues(
+                            alpha: 0.15,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -137,7 +134,9 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              pkg == null ? 'Novo Pacote KupON' : 'Editar Pacote',
+                              pkg == null
+                                  ? 'Novo Pacote KupON'
+                                  : 'Editar Pacote',
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -208,9 +207,14 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                   const SizedBox(height: 12),
 
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                      color: AppTheme.surfaceContainerHigh.withValues(
+                        alpha: 0.5,
+                      ),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: AppTheme.outlineVariant.withValues(alpha: 0.4),
@@ -239,7 +243,9 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: AppTheme.outlineVariant.withValues(alpha: 0.8),
+                              color: AppTheme.outlineVariant.withValues(
+                                alpha: 0.8,
+                              ),
                             ),
                             foregroundColor: AppTheme.onSurface,
                             minimumSize: const Size(0, 48),
@@ -266,8 +272,10 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                           onPressed: () {
                             if (nameCtrl.text.trim().isEmpty ||
                                 int.tryParse(priceCtrl.text) == null) {
-                              _snack('Nome e preço válidos são obrigatórios.',
-                                  error: true);
+                              _snack(
+                                'Nome e preço válidos são obrigatórios.',
+                                error: true,
+                              );
                               return;
                             }
                             Navigator.pop(ctx, true);
@@ -313,10 +321,13 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
     try {
       await _db
           .from('driver_packages')
-          .update({'is_active': pkg['is_active'] != true}).eq('id', pkg['id']);
-      _snack(pkg['is_active'] == true
-          ? 'Pacote pausado.'
-          : 'Pacote ativado para venda.');
+          .update({'is_active': pkg['is_active'] != true})
+          .eq('id', pkg['id']);
+      _snack(
+        pkg['is_active'] == true
+            ? 'Pacote pausado.'
+            : 'Pacote ativado para venda.',
+      );
       await _load();
     } catch (e) {
       _snack('Erro ao alterar estado: $e', error: true);
@@ -331,8 +342,11 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: const [
-            Icon(Icons.warning_amber_rounded,
-                color: Color(0xFFCF6679), size: 24),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Color(0xFFCF6679),
+              size: 24,
+            ),
             SizedBox(width: 10),
             Text('Eliminar Pacote?'),
           ],
@@ -341,13 +355,14 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
           'Tem certeza que deseja eliminar "${pkg['name']}"?\n\n'
           'Motoristas com o pacote ativo mantêm o acesso até expirar. '
           'Se houver histórico vinculado no banco, o pacote não será removido para manter integridade.',
-          style: const TextStyle(fontSize: 13.5, color: AppTheme.onSurfaceVariant),
+          style: const TextStyle(
+            fontSize: 13.5,
+            color: AppTheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 40),
-            ),
+            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)),
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancelar'),
           ),
@@ -370,8 +385,9 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
       await _load();
     } catch (e) {
       _snack(
-          'Não foi possível eliminar (pacote em uso por motoristas): $e',
-          error: true);
+        'Não foi possível eliminar (pacote em uso por motoristas): $e',
+        error: true,
+      );
     }
   }
 
@@ -387,7 +403,10 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
       style: const TextStyle(color: AppTheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontSize: 12.5, color: AppTheme.onSurfaceVariant),
+        labelStyle: const TextStyle(
+          fontSize: 12.5,
+          color: AppTheme.onSurfaceVariant,
+        ),
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, size: 18, color: AppTheme.primaryContainer)
             : null,
@@ -395,15 +414,22 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
         fillColor: AppTheme.surfaceContainerHigh.withValues(alpha: 0.4),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
+          borderSide: BorderSide(
+            color: AppTheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
+          borderSide: BorderSide(
+            color: AppTheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.primaryContainer, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppTheme.primaryContainer,
+            width: 1.5,
+          ),
         ),
       ),
     );
@@ -414,11 +440,27 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
   // ---------------------------------------------------------------
   Future<void> _saveSetting(String key, String value) async {
     try {
+      final parsedValue = int.tryParse(value) ?? jsonDecode(value);
+      if (key == 'cota_cost_bands') {
+        final bands = parsedValue is Map ? parsedValue['bands'] : null;
+        final hasValidBands =
+            bands is List &&
+            bands.isNotEmpty &&
+            bands.every(
+              (band) =>
+                  band is Map &&
+                  band['cotas'] is num &&
+                  (band['max_km'] == null || band['max_km'] is num),
+            );
+        if (!hasValidBands || parsedValue['extra_cotas_per_km'] is! num) {
+          throw const FormatException(
+            'Use {"bands":[{"max_km":3,"cotas":50}],"extra_cotas_per_km":10}',
+          );
+        }
+      }
       await _db.from('kupon_settings').upsert({
         'key': key,
-        'value': int.tryParse(value) != null
-            ? int.parse(value)
-            : jsonDecode(value),
+        'value': parsedValue,
       });
       _snack('Configuração "$key" guardada com sucesso.');
       await _load();
@@ -461,8 +503,10 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _sectionTitle('Pacotes de Acesso do Motorista',
-                              Icons.workspace_premium_rounded),
+                          _sectionTitle(
+                            'Pacotes de Acesso do Motorista',
+                            Icons.workspace_premium_rounded,
+                          ),
                           const Spacer(),
                           ElevatedButton.icon(
                             onPressed: () => _openPackageForm(),
@@ -473,12 +517,16 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                               foregroundColor: Colors.black,
                               minimumSize: const Size(0, 42),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 13),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
                               elevation: 0,
                             ),
                           ),
@@ -507,13 +555,17 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                             color: AppTheme.surfaceContainerLow,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppTheme.outlineVariant.withValues(alpha: 0.5),
+                              color: AppTheme.outlineVariant.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                           ),
                           child: const Center(
                             child: Text(
                               'Nenhum pacote cadastrado até ao momento.',
-                              style: TextStyle(color: AppTheme.onSurfaceVariant),
+                              style: TextStyle(
+                                color: AppTheme.onSurfaceVariant,
+                              ),
                             ),
                           ),
                         )
@@ -544,8 +596,10 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                       const SizedBox(height: 36),
 
                       // Seção 2: Configurações Globais (kupon_settings)
-                      _sectionTitle('Parâmetros Globais da Plataforma',
-                          Icons.tune_rounded),
+                      _sectionTitle(
+                        'Parâmetros Globais da Plataforma',
+                        Icons.tune_rounded,
+                      ),
                       const SizedBox(height: 6),
                       const Text(
                         'Ajuste os incentivos de aprovação, escalões de bónus diários e as cotas de fidelidade sincronizadas em tempo real.',
@@ -671,9 +725,7 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
       decoration: BoxDecoration(
         color: AppTheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -779,21 +831,31 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (active ? const Color(0xFF4CAF88) : const Color(0xFFCF6679))
-                      .withValues(alpha: 0.15),
+                  color:
+                      (active
+                              ? const Color(0xFF4CAF88)
+                              : const Color(0xFFCF6679))
+                          .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: (active ? const Color(0xFF4CAF88) : const Color(0xFFCF6679))
-                        .withValues(alpha: 0.35),
+                    color:
+                        (active
+                                ? const Color(0xFF4CAF88)
+                                : const Color(0xFFCF6679))
+                            .withValues(alpha: 0.35),
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      active ? Icons.check_circle_rounded : Icons.pause_circle_rounded,
+                      active
+                          ? Icons.check_circle_rounded
+                          : Icons.pause_circle_rounded,
                       size: 13,
-                      color: active ? const Color(0xFF4CAF88) : const Color(0xFFCF6679),
+                      color: active
+                          ? const Color(0xFF4CAF88)
+                          : const Color(0xFFCF6679),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -896,13 +958,16 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
               TextButton.icon(
                 onPressed: () => _togglePackage(pkg),
                 icon: Icon(
-                  active ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                  active
+                      ? Icons.pause_circle_outline
+                      : Icons.play_circle_outline,
                   size: 16,
                 ),
                 label: Text(active ? 'Pausar' : 'Ativar'),
                 style: TextButton.styleFrom(
-                  foregroundColor:
-                      active ? const Color(0xFFFFB74D) : const Color(0xFF4CAF88),
+                  foregroundColor: active
+                      ? const Color(0xFFFFB74D)
+                      : const Color(0xFF4CAF88),
                 ),
               ),
               const Spacer(),
@@ -963,44 +1028,26 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
       ),
       const SizedBox(height: 16),
       _settingsGroupCard(
-        title: 'Cotas de Fidelidade — Acumulação e Pagamento',
+        title: 'Cotas de Fidelidade — Consumo por distância',
         icon: Icons.loyalty_rounded,
         items: [
           _settingItem(
-            'cota_per_trip',
-            'Cotas por viagem concluída',
-            'Pontuação acumulada por cada viagem finalizada. Grátis/desconto 100%/passe não geram.',
-            suffix: 'cotas',
-          ),
-          _settingItem(
             'cota_cost_bands',
             'Faixas de custo em cotas (JSON)',
-            'Cotação de corridas pagas em cotas: até 3 km→50; 3–5 km→70; >5 km→70+10/km; cap perto do aeroporto→80+5/km (cap 90). Ex: [{"max_km":3,"cost":50},{"max_km":5,"cost":70},{"max_km":7,"cost":90},…]. Aplica-se a passageiro e 3.º.',
+            'Formato exigido pelo servidor: {"bands":[{"max_km":3,"cotas":50},{"max_km":5,"cotas":70}],"extra_cotas_per_km":10}. Faixas padrão: até 3 km = 50; até 5 km = 70; acima = +10/km.',
             isJson: true,
           ),
           _settingItem(
             'cota_cost_cap',
-            'Faixa de cap (aeroporto) a partir de (km)',
-            'Distância a partir da qual vale a faixa do cap (80+5/km, cap 90). 0 desativa o cap.',
-            suffix: 'km',
+            'Teto máximo de cotas por corrida',
+            'Valor máximo de cotas que uma corrida pode consumir (ex.: 300). 0 desativa o teto.',
+            suffix: 'cotas',
           ),
           _settingItem(
             'cota_to_kup_rate',
             'Taxa de conversão cota→Kup (fallback)',
             'Valor do Kup por cota no fallback da conclusão: 1 cota = 40 Kup.',
             suffix: 'Kup/cota',
-          ),
-          _settingItem(
-            'cota_validity_months',
-            'Validade das cotas acumuladas',
-            'Período em meses antes da expiração das cotas.',
-            suffix: 'meses',
-          ),
-          _settingItem(
-            'cota_monthly_cap',
-            'Teto mensal de cotas',
-            'Limite de cotas que um usuário pode acumular por mês.',
-            suffix: 'cotas',
           ),
         ],
       ),
@@ -1061,14 +1108,20 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
     String? suffix,
     bool isJson = false,
   }) {
-    final ctrl =
-        TextEditingController(text: '${_settings[key]?['value'] ?? ''}');
+    final ctrl = TextEditingController(
+      text: isJson
+          ? (_settings[key]?['value'] == null
+                ? ''
+                : jsonEncode(_settings[key]!['value']))
+          : '${_settings[key]?['value'] ?? ''}',
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        crossAxisAlignment:
-            isJson ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment: isJson
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Expanded(
             flex: 4,
@@ -1122,8 +1175,10 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                   fontSize: 11.5,
                   color: AppTheme.onSurfaceVariant,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 filled: true,
                 fillColor: AppTheme.surfaceContainerHigh.withValues(alpha: 0.4),
                 border: OutlineInputBorder(
