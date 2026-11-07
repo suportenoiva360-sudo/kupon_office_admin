@@ -28,6 +28,14 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
   final TextEditingController _chainRadiusCtrl = TextEditingController();
   final TextEditingController _chainAgeCtrl = TextEditingController();
   final TextEditingController _chainWindowCtrl = TextEditingController();
+  // Segurança — verificação facial diária (kupon_settings).
+  bool _faceVerificationEnabled = false;
+  final TextEditingController _faceMaxAttemptsCtrl = TextEditingController();
+  // Segurança — limite de velocidade e autorização (kupon_settings).
+  final TextEditingController _speedLimitCtrl = TextEditingController();
+  final TextEditingController _speedToleranceCtrl = TextEditingController();
+  final TextEditingController _speedAlertSecondsCtrl = TextEditingController();
+  final TextEditingController _speedCloseSecondsCtrl = TextEditingController();
   // Cancelamentos [fase 4] — faixas + atrasos + revisão/contestação.
   final TextEditingController _capFee1Ctrl = TextEditingController();
   final TextEditingController _capFee2Ctrl = TextEditingController();
@@ -91,7 +99,20 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     _chainRadiusCtrl.dispose();
     _chainAgeCtrl.dispose();
     _chainWindowCtrl.dispose();
-    _rideEndRadiusCtrl.dispose();
+    _faceMaxAttemptsCtrl.dispose();
+    _speedLimitCtrl.dispose();
+    _speedToleranceCtrl.dispose();
+    _speedAlertSecondsCtrl.dispose();
+    _speedCloseSecondsCtrl.dispose();
+    _capFee1Ctrl.dispose();
+    _capFee2Ctrl.dispose();
+    _capFee3Ctrl.dispose();
+    _capFee4Ctrl.dispose();
+    _capWarnMinCtrl.dispose();
+    _capFreeMinCtrl.dispose();
+    _capStallMinCtrl.dispose();
+    _capRevThreshCtrl.dispose();
+    _capDisputeDaysCtrl.dispose();
     super.dispose();
   }
 
@@ -181,6 +202,61 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         _chainRadiusCtrl.text = '3';
         _chainAgeCtrl.text = '10';
         _chainWindowCtrl.text = '90';
+      }
+
+      // Segurança — verificação facial e limite de velocidade.
+      try {
+        final secRows = await _db
+            .from('kupon_settings')
+            .select('key, value')
+            .inFilter('key', [
+              'face_verification_enabled',
+              'face_max_attempts',
+              'speed_limit_kmh',
+              'speed_alert_tolerance_kmh',
+              'speed_alert_min_seconds',
+              'speed_event_close_seconds',
+            ]);
+        var faceEnabled = false;
+        var faceAttempts = '3';
+        var speedLimit = '60';
+        var speedTolerance = '5';
+        var speedAlert = '5';
+        var speedClose = '10';
+        for (final row in (secRows as List)) {
+          final key = row['key'] as String?;
+          final value = row['value'];
+          final txt = value == null ? '' : '$value'.trim();
+          switch (key) {
+            case 'face_verification_enabled':
+              faceEnabled = value == true || txt.toLowerCase() == 'true';
+            case 'face_max_attempts':
+              if (txt.isNotEmpty) faceAttempts = txt;
+            case 'speed_limit_kmh':
+              if (txt.isNotEmpty) speedLimit = txt;
+            case 'speed_alert_tolerance_kmh':
+              if (txt.isNotEmpty) speedTolerance = txt;
+            case 'speed_alert_min_seconds':
+              if (txt.isNotEmpty) speedAlert = txt;
+            case 'speed_event_close_seconds':
+              if (txt.isNotEmpty) speedClose = txt;
+          }
+        }
+        setState(() {
+          _faceVerificationEnabled = faceEnabled;
+          _faceMaxAttemptsCtrl.text = faceAttempts;
+          _speedLimitCtrl.text = speedLimit;
+          _speedToleranceCtrl.text = speedTolerance;
+          _speedAlertSecondsCtrl.text = speedAlert;
+          _speedCloseSecondsCtrl.text = speedClose;
+        });
+      } catch (_) {
+        _faceVerificationEnabled = false;
+        _faceMaxAttemptsCtrl.text = '3';
+        _speedLimitCtrl.text = '60';
+        _speedToleranceCtrl.text = '5';
+        _speedAlertSecondsCtrl.text = '5';
+        _speedCloseSecondsCtrl.text = '10';
       }
 
       // Cancelamentos [fase 4] — faixas de taxa + atrasos + revisão/contestação
@@ -381,6 +457,76 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         }, onConflict: 'key').select();
         if ((rows as List).isEmpty) {
           failure.add('$label da cadeia (0 linhas)');
+        }
+      }
+
+      // Segurança — verificação facial (ativar/desativar + tentativas).
+      final faceRows = await _db.from('kupon_settings').upsert({
+        'key': 'face_verification_enabled',
+        'value': _faceVerificationEnabled,
+      }, onConflict: 'key').select();
+      if ((faceRows as List).isEmpty) {
+        failure.add('verificação facial (0 linhas)');
+      }
+      final faceAttempts = int.tryParse(_faceMaxAttemptsCtrl.text.trim());
+      if (faceAttempts == null || faceAttempts < 1 || faceAttempts > 10) {
+        failure.add('tentativas diárias da verificação facial (1–10)');
+      } else {
+        final rows = await _db.from('kupon_settings').upsert({
+          'key': 'face_max_attempts',
+          'value': faceAttempts,
+        }, onConflict: 'key').select();
+        if ((rows as List).isEmpty) {
+          failure.add('tentativas diárias da verificação facial (0 linhas)');
+        }
+      }
+
+      // Segurança — limite de velocidade e janelas de alerta/fecho.
+      final speedLimit = int.tryParse(_speedLimitCtrl.text.trim());
+      final speedTolerance = int.tryParse(_speedToleranceCtrl.text.trim());
+      final speedAlertSeconds = int.tryParse(
+        _speedAlertSecondsCtrl.text.trim(),
+      );
+      final speedCloseSeconds = int.tryParse(
+        _speedCloseSecondsCtrl.text.trim(),
+      );
+      if (speedLimit == null || speedLimit < 20 || speedLimit > 120) {
+        failure.add('limite de velocidade (20–120 km/h)');
+      } else if (speedTolerance == null ||
+          speedTolerance < 0 ||
+          speedTolerance > 30) {
+        failure.add('tolerância do limite (0–30 km/h)');
+      } else if (speedAlertSeconds == null ||
+          speedAlertSeconds < 1 ||
+          speedAlertSeconds > 60) {
+        failure.add('alerta mínimo do limite (1–60 s)');
+      } else if (speedCloseSeconds == null ||
+          speedCloseSeconds < 1 ||
+          speedCloseSeconds > 120) {
+        failure.add('fecho do evento de velocidade (1–120 s)');
+      } else {
+        final speedSpecs = <(String, String, int)>[
+          ('speed_limit_kmh', 'limite de velocidade', speedLimit),
+          ('speed_alert_tolerance_kmh', 'tolerância do limite', speedTolerance),
+          (
+            'speed_alert_min_seconds',
+            'alerta mínimo do limite',
+            speedAlertSeconds,
+          ),
+          (
+            'speed_event_close_seconds',
+            'fecho do evento de velocidade',
+            speedCloseSeconds,
+          ),
+        ];
+        for (final (key, label, value) in speedSpecs) {
+          final rows = await _db.from('kupon_settings').upsert({
+            'key': key,
+            'value': value,
+          }, onConflict: 'key').select();
+          if ((rows as List).isEmpty) {
+            failure.add('$label (0 linhas)');
+          }
         }
       }
 
@@ -626,6 +772,16 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
                       ),
                       const SizedBox(height: 14),
                       _buildChainCard(),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Segurança do Motorista',
+                        'Verificação facial diária antes de ficar online e limite de velocidade com autorização do passageiro (configurações face_verification_enabled / face_max_attempts / speed_limit_kmh / speed_alert_tolerance_kmh / speed_alert_min_seconds / speed_event_close_seconds).',
+                        Icons.shield_rounded,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildFaceVerificationCard(),
+                      const SizedBox(height: 16),
+                      _buildSpeedLimitCard(),
                       const SizedBox(height: 32),
                       _buildSectionHeader(
                         'Regras de Cancelamento',
@@ -874,6 +1030,286 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
     );
   }
 
+  /// Segurança — verificação facial diária (ativar/desativar + tentativas).
+  Widget _buildFaceVerificationCard() {
+    final enabled = _faceVerificationEnabled;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceContainerHighest),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryContainer.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.face_retouching_natural_rounded,
+                  color: AppTheme.primaryContainer,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'VERIFICAÇÃO FACIAL DIÁRIA',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: AppTheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      enabled
+                          ? 'Ativa — o motorista tem de passar o desafio de liveness antes de ficar online.'
+                          : 'Desligada — o motorista fica online sem selfie.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: AppTheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Switch(
+                value: enabled,
+                activeThumbColor: AppTheme.primaryContainer,
+                activeTrackColor: AppTheme.primaryContainer.withValues(
+                  alpha: 0.35,
+                ),
+                onChanged: (value) =>
+                    setState(() => _faceVerificationEnabled = value),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'TENTATIVAS POR DIA',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 96,
+                child: TextField(
+                  controller: _faceMaxAttemptsCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    suffixText: 'x',
+                    suffixStyle: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.onSurfaceVariant,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.surfaceContainerHighest,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (enabled) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5C842).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFFF5C842).withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: Color(0xFFF5C842),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Liga apenas quando a app com o ecrã de captura estiver '
+                      'instalada nos motoristas. Quem ficar offline sem essa '
+                      'versão não consegue voltar a ficar online.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.4,
+                        color: const Color(0xFFE2BFB0).withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Segurança — limite de velocidade e autorização do passageiro.
+  Widget _buildSpeedLimitCard() {
+    Widget field(String label, String suffix, TextEditingController ctrl) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl,
+              keyboardType: const TextInputType.numberWithOptions(),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.onSurface,
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                suffixText: suffix,
+                suffixStyle: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+                filled: true,
+                fillColor: AppTheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppTheme.surfaceContainerHighest,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceContainerHighest),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryContainer.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.speed_rounded,
+                  color: AppTheme.primaryContainer,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LIMITE DE VELOCIDADE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: AppTheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Aplicado a viagens novas; a viagem em curso mantém o limite com que começou. O passageiro pode autorizar o excesso até ao fim da viagem.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: AppTheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              field('LIMITE', 'km/h', _speedLimitCtrl),
+              const SizedBox(width: 12),
+              field('TOLERÂNCIA', 'km/h', _speedToleranceCtrl),
+              const SizedBox(width: 12),
+              field('ALERTA MÍN.', 's', _speedAlertSecondsCtrl),
+              const SizedBox(width: 12),
+              field('FECHO', 's', _speedCloseSecondsCtrl),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Limite 20–120 km/h · tolerância 0–30 km/h · alerta 1–60 s · fecho 1–120 s.',
+            style: TextStyle(
+              fontSize: 10.5,
+              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.75),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Cancelamentos [fase 4] — faixas de taxa (4) + limites (5).
   Widget _buildCancelCard() {
     Widget field(String label, String suffix, TextEditingController ctrl) {
@@ -1020,7 +1456,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Ajuste dinâmico de tarifas, comissões e multiplicadores operacionais',
+                'Ajuste dinâmico de tarifas, comissões, segurança e multiplicadores operacionais',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
@@ -1674,7 +2110,7 @@ class _AdminConfiguracoesPageState extends State<AdminConfiguracoesPage> {
         label: Text(
           _saving
               ? 'A Salvar Alterações...'
-              : 'Salvar e Aplicar Tarifas Globais',
+              : 'Salvar e Aplicar Configurações Globais',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 14.5,
             fontWeight: FontWeight.w800,
