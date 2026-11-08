@@ -360,7 +360,7 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
         ),
         IconButton(
           tooltip: 'Cancelamentos e dívidas',
-          onPressed: () => context.push('/cancelamentos'),
+          onPressed: () => context.go('/cancelamentos'),
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(

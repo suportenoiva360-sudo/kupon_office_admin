@@ -18,6 +18,7 @@ import 'package:kupon_office_admin/features/admin/presentation/pages/admin_sos_p
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_configuracoes_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_map_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_cancelamentos_page.dart';
+import 'package:kupon_office_admin/features/admin/presentation/pages/admin_face_reviews_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -191,6 +192,26 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/verificacoes',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: AdminFaceReviewsPage(),
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/cancelamentos',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: AdminCancelamentosPage(),
+              ),
+            ),
+          ],
+        ),
       ],
     ),
     GoRoute(
@@ -204,11 +225,6 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => AdminDriverDetailPage(
         driverId: state.pathParameters['id']!,
       ),
-    ),
-    GoRoute(
-      path: '/cancelamentos',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const AdminCancelamentosPage(),
     ),
   ],
 );

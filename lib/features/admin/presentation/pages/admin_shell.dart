@@ -27,61 +27,83 @@ class AdminShell extends StatefulWidget {
 class _AdminShellState extends State<AdminShell> {
   StatefulNavigationShell get _nav => widget.navigationShell;
 
-  /// Índice do branch `/sos` no router (último da StatefulShellRoute).
-  /// Manter sincronizado com `branches` em app_router.dart — se
-  /// deslocar, os botões a seguir abrem a página errada.
+  /// Índice do branch `/sos` no router. Não aparece na grelha de destinos.
+  /// Manter sincronizado com `branches` em app_router.dart — se deslocar,
+  /// o botão EMERGENCIA abre a página errada.
   static const int _sosIndex = 10;
 
   static const _destinations = [
     _NavDestination(
+      branchIndex: 0,
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard_rounded,
       label: 'Painel',
     ),
     _NavDestination(
+      branchIndex: 1,
       icon: Icons.directions_car_outlined,
       selectedIcon: Icons.directions_car_rounded,
       label: 'Motoristas',
     ),
     _NavDestination(
+      branchIndex: 2,
       icon: Icons.group_outlined,
       selectedIcon: Icons.group_rounded,
       label: 'Utilizadores',
     ),
     _NavDestination(
+      branchIndex: 3,
       icon: Icons.account_balance_wallet_outlined,
       selectedIcon: Icons.account_balance_wallet_rounded,
       label: 'Tarifas e Finanças',
     ),
     _NavDestination(
+      branchIndex: 4,
       icon: Icons.support_agent_outlined,
       selectedIcon: Icons.support_agent_rounded,
       label: 'Tickets de Suporte',
     ),
     _NavDestination(
+      branchIndex: 5,
       icon: Icons.local_offer_outlined,
       selectedIcon: Icons.local_offer_rounded,
       label: 'Promoções',
     ),
     _NavDestination(
+      branchIndex: 6,
       icon: Icons.card_giftcard_outlined,
       selectedIcon: Icons.card_giftcard_rounded,
       label: 'Recompensas',
     ),
     _NavDestination(
+      branchIndex: 7,
       icon: Icons.card_membership_outlined,
       selectedIcon: Icons.card_membership_rounded,
       label: 'Planos',
     ),
     _NavDestination(
+      branchIndex: 8,
       icon: Icons.workspace_premium_outlined,
       selectedIcon: Icons.workspace_premium_rounded,
       label: 'Pacotes KupON',
     ),
     _NavDestination(
+      branchIndex: 9,
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings_rounded,
       label: 'Configurações do Sistema',
+    ),
+    _NavDestination(
+      branchIndex: 11,
+      icon: Icons.face_retouching_natural_outlined,
+      selectedIcon: Icons.face_retouching_natural_rounded,
+      label: 'Verificações Faciais',
+    ),
+    _NavDestination(
+      branchIndex: 12,
+      icon: Icons.cancel_presentation_outlined,
+      selectedIcon: Icons.cancel_presentation_rounded,
+      label: 'Cancelamentos e Dívidas',
     ),
   ];
 
@@ -364,11 +386,13 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   Widget _buildGridTile(int index) {
-    final isSelected = _nav.currentIndex == index;
     final dest = _destinations[index];
+    final isSelected = _nav.currentIndex == dest.branchIndex;
     return GestureDetector(
-      onTap: () =>
-          _nav.goBranch(index, initialLocation: index == _nav.currentIndex),
+      onTap: () => _nav.goBranch(
+        dest.branchIndex,
+        initialLocation: dest.branchIndex == _nav.currentIndex,
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
@@ -964,11 +988,15 @@ class _AdminShellState extends State<AdminShell> {
 }
 
 class _NavDestination {
+  /// Índice do branch em `app_router.dart`. Manter sincronizado — o SOS
+  /// (branch 10) não aparece na grelha.
+  final int branchIndex;
   final IconData icon;
   final IconData selectedIcon;
   final String label;
 
   const _NavDestination({
+    required this.branchIndex,
     required this.icon,
     required this.selectedIcon,
     required this.label,
