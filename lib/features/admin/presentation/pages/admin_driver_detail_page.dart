@@ -113,6 +113,37 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
     }
   }
 
+  /// Reinicia as tentativas de verificação facial e remove o bloqueio.
+  Future<void> _resetFaceAttempts() async {
+    setState(() => _saving = true);
+    try {
+      await _db.rpc(
+        'reset_face_attempts',
+        params: {
+          'p_driver_id': widget.driverId,
+          'p_note': 'Desbloqueio manual no painel admin',
+        },
+      );
+      if (!mounted) return;
+      await _load();
+      if (!mounted) return;
+      showAdminSnackBar(
+        context,
+        message: 'Tentativas reiniciadas e verificação facial desbloqueada.',
+        type: AdminSnackType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAdminSnackBar(
+        context,
+        message: 'Erro ao reiniciar as tentativas: $e',
+        type: AdminSnackType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -527,8 +558,120 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        _buildFaceVerificationCard(driverId),
       ],
     );
+  }
+
+  /// Estado da verificação facial + desbloqueio manual.
+  Widget _buildFaceVerificationCard(String driverId) {
+    final blocked = _driver?['face_blocked_at'] != null;
+    final reason = _driver?['face_block_reason'] as String?;
+    final consentAt = _driver?['face_consent_at'] as String?;
+    final verifiedOn = _driver?['face_verified_on'] as String?;
+    final today = _luandaToday();
+
+    final (statusLabel, statusColor) = blocked
+        ? (
+            reason == 'attempts_exhausted'
+                ? 'Bloqueada (tentativas esgotadas)'
+                : 'Bloqueada',
+            const Color(0xFFCF6679),
+          )
+        : verifiedOn == today
+        ? ('Verificada hoje', const Color(0xFF4CAF88))
+        : consentAt == null
+        ? ('Sem consentimento', AppTheme.onSurfaceVariant)
+        : ('Pendente de verificação', const Color(0xFFE0A93E));
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.face_retouching_natural_rounded,
+                size: 18,
+                color: Color(0xFFE2BFB0),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Verificação Facial',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFE5E2E1),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: statusColor.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            verifiedOn == null
+                ? 'Ainda não verificou o rosto.'
+                : 'Última verificação: $verifiedOn.',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 11.5,
+              color: AppTheme.onSurfaceVariant,
+            ),
+          ),
+          if (blocked) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _saving ? null : _resetFaceAttempts,
+                icon: const Icon(Icons.lock_open_rounded, size: 18),
+                label: const Text('Reiniciar tentativas e desbloquear'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryContainer,
+                  side: BorderSide(
+                    color: AppTheme.primaryContainer.withValues(alpha: 0.5),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _luandaToday() {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 1));
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${now.year.toString().padLeft(4, '0')}-${two(now.month)}-${two(now.day)}';
   }
 
   Widget _infoSection(String title, List<_InfoRow> rows) {
