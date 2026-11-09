@@ -85,6 +85,37 @@ class _AdminFaceReviewsPageState extends State<AdminFaceReviewsPage> {
         row['_driver'] = driversById[row['driver_id']];
       }
 
+      // Diagnóstico por tentativa (contadores da câmara e do ML Kit). Fica
+      // numa tabela à parte, por isso é outro join em dois passos. Uma falha
+      // nesta consulta não deve esconder as verificações.
+      final checkIds = rows
+          .map((r) => r['id'])
+          .whereType<String>()
+          .toSet()
+          .toList();
+      final diagById = <String, Map<String, dynamic>>{};
+      if (checkIds.isNotEmpty) {
+        try {
+          final diags = await _db
+              .from('face_check_diagnostics')
+              .select('check_id, diagnostics')
+              .inFilter('check_id', checkIds);
+          for (final d in diags) {
+            final map = Map<String, dynamic>.from(d);
+            final payload = map['diagnostics'];
+            if (payload is Map) {
+              diagById[map['check_id'] as String] =
+                  Map<String, dynamic>.from(payload);
+            }
+          }
+        } catch (_) {
+          // Tabela em falta ou sem permissão: segue sem diagnóstico.
+        }
+      }
+      for (final row in rows) {
+        row['_diag'] = diagById[row['id']];
+      }
+
       if (!mounted) return;
       setState(() {
         _rows = rows;
@@ -764,6 +795,7 @@ class _AdminFaceReviewsPageState extends State<AdminFaceReviewsPage> {
               ),
             ],
           ),
+          _buildDiagnostics(row),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -812,6 +844,146 @@ class _AdminFaceReviewsPageState extends State<AdminFaceReviewsPage> {
               ],
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Resumo do diagnóstico enviado pelo cliente (frames, deteções, formato).
+  ///
+  /// Sem isto, uma tentativa rejeitada mostra apenas "timeout" e não se
+  /// percebe se o ML Kit viu rosto, se o formato era incompatível ou se a
+  /// câmara falhou. Quando não há diagnóstico, a tentativa é anterior à
+  /// instrumentação.
+  Widget _buildDiagnostics(Map<String, dynamic> row) {
+    final raw = row['_diag'];
+    final muted = const Color(0xFFE2BFB0).withValues(alpha: 0.6);
+
+    if (raw is! Map) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Row(
+          children: [
+            Icon(Icons.science_outlined, size: 14, color: muted),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Sem diagnóstico nesta tentativa (app anterior à '
+                'instrumentação).',
+                style: GoogleFonts.spaceGrotesk(fontSize: 10.5, color: muted),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final d = Map<String, dynamic>.from(raw);
+
+    String text(String key) {
+      final value = d[key];
+      if (value == null) return '—';
+      if (value is double) return value.toStringAsFixed(2);
+      return value.toString();
+    }
+
+    int number(String key) => (d[key] as num?)?.toInt() ?? 0;
+
+    final frames = number('frames');
+    final noFace = number('no_face');
+    final oneFace = number('one_face');
+    final centered = number('centered');
+    final errors = number('errors');
+    final lastError = text('last_error');
+
+    // Nenhum rosto em nenhum frame é o sintoma mais grave: ou o formato da
+    // câmara está errado, ou o ML Kit não está a ver a imagem.
+    final onlyNoFace = oneFace == 0 && frames > 0;
+    final accent = onlyNoFace ? const Color(0xFFCF6679) : const Color(0xFF4CAF88);
+
+    final items = <String>[
+      'frames $frames',
+      'sem rosto $noFace',
+      '1 rosto $oneFace',
+      'centrados $centered',
+      'olhos ${text('eye_signal')}',
+      'yaw ${text('yaw_signal')}',
+      'erros $errors',
+      'formato ${text('stream_format')}',
+      'imagem ${text('image')}',
+      'planos ${text('planes')}',
+      'rotação ${text('rotation')}',
+      'fase ${text('phase')}',
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.science_outlined, size: 14, color: accent),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Diagnóstico da tentativa',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: accent,
+                  ),
+                ),
+              ),
+              Text(
+                'saída ${text('outcome')}',
+                style: GoogleFonts.spaceGrotesk(fontSize: 10.5, color: muted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final label in items)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    label,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 10.5,
+                      color: const Color(0xFFE2BFB0),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (lastError.isNotEmpty && lastError != '—') ...[
+            const SizedBox(height: 6),
+            Text(
+              'Último erro: $lastError',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 10.5,
+                color: const Color(0xFFCF6679),
+              ),
+            ),
+          ],
         ],
       ),
     );
