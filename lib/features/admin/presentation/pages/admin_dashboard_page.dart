@@ -44,6 +44,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
   int _prevNewUsers30d = 0;
   int _pendingDrivers = 0;
   int _openTickets = 0;
+  // Receitas separadas (ver ESPECIFICACAO_RECEITAS_ADMIN.md).
+  int _companyRevenue = 0;
+  int _commissionRevenue = 0;
+  int _subscriptionRevenue = 0;
+  int _packageRevenue = 0;
+  int _driverNet = 0;
+  int _grossFares = 0;
+  int _activeSubscribers = 0;
+  int _newSubscribers = 0;
   List<DailyPoint> _daily = [];
   List<DashAlert> _alerts = [];
   // Chip de categoria ativo nos "Alertas Recentes" ('all' = Todos).
@@ -211,6 +220,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
           _prevNewUsers30d = snap.prevNewUsers30d;
           _pendingDrivers = snap.pendingDrivers;
           _openTickets = snap.openTickets;
+          _companyRevenue = snap.companyRevenue;
+          _commissionRevenue = snap.commissionRevenue;
+          _subscriptionRevenue = snap.subscriptionRevenue;
+          _packageRevenue = snap.packageRevenue;
+          _driverNet = snap.driverNet;
+          _grossFares = snap.grossFares;
+          _activeSubscribers = snap.activeSubscribers;
+          _newSubscribers = snap.newSubscribers;
           _daily = snap.daily;
           _alerts = snap.alerts;
           _loading = false;
@@ -820,19 +837,46 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
   Widget _buildBentoStatsGrid() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double cardWidth = (constraints.maxWidth - 3 * 16) / 4;
+        const spacing = 16.0;
+        final columns = constraints.maxWidth >= 1000
+            ? 3
+            : constraints.maxWidth >= 640
+            ? 2
+            : 1;
+        final double cardWidth =
+            (constraints.maxWidth - (columns - 1) * spacing) / columns;
         return Wrap(
-          spacing: 16,
-          runSpacing: 16,
+          spacing: spacing,
+          runSpacing: spacing,
           children: [
             _buildBentoCard(
               width: cardWidth,
-              icon: Icons.payments_outlined,
+              icon: Icons.account_balance_wallet_rounded,
               iconColor: const Color(0xFFFF6B00),
-              label: 'RECEITA TOTAL',
-              value: '${formatNumber(_revenue30d)} Kz',
-              trend: _trendLabel(_revenue30d, _prevRevenue30d),
-              isPositive: _isGrowth(_revenue30d, _prevRevenue30d),
+              label: 'RECEITA DA EMPRESA',
+              value: '${formatNumber(_companyRevenue)} Kz',
+              footer:
+                  'Comissão ${formatNumber(_commissionRevenue)} · '
+                  'Assin. ${formatNumber(_subscriptionRevenue)} · '
+                  'Pacotes ${formatNumber(_packageRevenue)}',
+            ),
+            _buildBentoCard(
+              width: cardWidth,
+              icon: Icons.drive_eta_rounded,
+              iconColor: const Color(0xFF4CAF88),
+              label: 'MOTORISTAS (LÍQUIDO)',
+              value: '${formatNumber(_driverNet)} Kz',
+              footer: '${formatNumber(_grossFares)} Kz brutos em tarifas',
+            ),
+            _buildBentoCard(
+              width: cardWidth,
+              icon: Icons.workspace_premium_rounded,
+              iconColor: const Color(0xFF5AB0FF),
+              label: 'ASSINANTES',
+              value: '$_activeSubscribers',
+              footer:
+                  '$_newSubscribers novos · '
+                  '${formatNumber(_subscriptionRevenue)} Kz',
             ),
             _buildBentoCard(
               width: cardWidth,
@@ -886,6 +930,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
     String? trend,
     bool? isPositive,
     String? subLabel,
+    String? footer,
   }) {
     return Container(
       width: width < 200 ? 200 : width,
@@ -962,6 +1007,18 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
               color: const Color(0xFFE5E2E1),
             ),
           ),
+          if (footer != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              footer,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );

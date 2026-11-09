@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
+import 'package:kupon_office_admin/repositories/revenue_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/payment_requests_section.dart';
 import 'package:kupon_office_admin/core/widgets/app_snackbar.dart';
@@ -17,6 +18,7 @@ class AdminFinanceiroPage extends StatefulWidget {
 class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
     with SingleTickerProviderStateMixin {
   final _db = Supabase.instance.client;
+  final _revenueRepo = RevenueRepository();
   late final TabController _tabCtrl;
 
   bool _loading = true;
@@ -24,11 +26,14 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
   String _selectedStatusFilter =
       'all'; // 'all', 'completed', 'pending', 'failed'
 
+  /// Período do bloco de receitas: today, 7d, 30d ou month (mês corrente).
+  String _revenuePeriod = 'month';
+  RevenueSummary? _revenue;
+
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _pendingTopups = [];
   List<Map<String, dynamic>> _pendingSubs = [];
 
-  int _totalRevenue = 0;
   int _pendingWithdrawsCount = 0;
   int _pendingWithdrawsAmount = 0;
   int _pendingTopupsAmount = 0;
@@ -53,6 +58,7 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
           .limit(100);
       final topupsFuture = _db.rpc('admin_get_pending_topups');
       final subsFuture = _db.rpc('admin_get_pending_subscriptions');
+      final revenueFuture = _fetchRevenue();
 
       final list = List<Map<String, dynamic>>.from(await txFuture);
       final topups = List<Map<String, dynamic>>.from(
@@ -61,9 +67,9 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
       final subs = List<Map<String, dynamic>>.from(
         (await subsFuture) as List? ?? const [],
       );
+      final revenueSummary = await revenueFuture;
 
       if (mounted) {
-        int revenue = 0;
         int pendingWithCount = 0;
         int pendingWithAmount = 0;
 
@@ -72,7 +78,6 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
           final type = t['type'] as String? ?? '';
           final status = t['status'] as String? ?? '';
 
-          if (type == 'ride_payment') revenue += amount;
           if (type == 'withdraw' && status == 'pending') {
             pendingWithCount++;
             pendingWithAmount += amount.abs();
@@ -93,7 +98,7 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
           _transactions = list;
           _pendingTopups = topups;
           _pendingSubs = subs;
-          _totalRevenue = revenue;
+          _revenue = revenueSummary;
           _pendingWithdrawsCount = pendingWithCount;
           _pendingWithdrawsAmount = pendingWithAmount;
           _pendingTopupsAmount = topupsAmount;
@@ -104,6 +109,45 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // ── Receitas separadas ────────────────────────────────────────────────────
+
+  /// Intervalo do bloco de receitas. O fim é exclusivo na RPC.
+  ({DateTime start, DateTime end}) get _revenueRange {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    switch (_revenuePeriod) {
+      case 'today':
+        return (start: today, end: now);
+      case '7d':
+        return (start: today.subtract(const Duration(days: 6)), end: now);
+      case '30d':
+        return (start: today.subtract(const Duration(days: 29)), end: now);
+      default:
+        return (start: DateTime(now.year, now.month, 1), end: now);
+    }
+  }
+
+  Future<RevenueSummary?> _fetchRevenue() async {
+    final range = _revenueRange;
+    try {
+      return await _revenueRepo.summary(start: range.start, end: range.end);
+    } catch (_) {
+      // O bloco de receitas não deve derrubar o resto da página.
+      return null;
+    }
+  }
+
+  Future<void> _setRevenuePeriod(String period) async {
+    if (_revenuePeriod == period) return;
+    setState(() {
+      _revenuePeriod = period;
+      _revenue = null;
+    });
+    final summary = await _fetchRevenue();
+    if (!mounted || summary == null) return;
+    setState(() => _revenue = summary);
   }
 
   void _handleTabChanged() {
@@ -135,6 +179,8 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                   children: [
                     _buildHeaderBar(),
                     const SizedBox(height: 18),
+                    _buildRevenuePeriodSelector(),
+                    const SizedBox(height: 10),
                     _buildKpiSection(),
                     const SizedBox(height: 18),
                     _buildSearchBarAndFilter(),
@@ -400,89 +446,194 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
     );
   }
 
+  /// Seletor do período que alimenta o bloco de receitas.
+  ///
+  /// O mesmo intervalo é aplicado a todos os cartões (empresa, motoristas e
+  /// assinantes) para que os números sejam comparáveis entre si.
+  Widget _buildRevenuePeriodSelector() {
+    const options = <({String id, String label})>[
+      (id: 'today', label: 'Hoje'),
+      (id: '7d', label: '7 dias'),
+      (id: '30d', label: '30 dias'),
+      (id: 'month', label: 'Mês corrente'),
+    ];
+
+    return Row(
+      children: [
+        Icon(
+          Icons.calendar_month_rounded,
+          size: 14,
+          color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'Receitas',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFFE2BFB0).withValues(alpha: 0.7),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final option in options) ...[
+                  _periodChip(
+                    label: option.label,
+                    selected: _revenuePeriod == option.id,
+                    onTap: () => _setRevenuePeriod(option.id),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (_revenue == null)
+          Text(
+            'sem dados',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10,
+              color: const Color(0xFFE2BFB0).withValues(alpha: 0.45),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _periodChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.primaryContainer.withValues(alpha: 0.16)
+              : AppTheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? AppTheme.primaryContainer.withValues(alpha: 0.7)
+                : AppTheme.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: selected
+                ? const Color(0xFFFFB27A)
+                : const Color(0xFFE2BFB0).withValues(alpha: 0.7),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Cartões de receitas separadas.
+  ///
+  /// Definições aprovadas pelo operador (2026-11-09):
+  ///  * Empresa   = comissão + assinaturas + pacotes de motoristas;
+  ///  * Motoristas= ganhos líquidos (tarifa − comissão + gorjeta);
+  ///  * Assinantes= ativos com pagamento confirmado + receita das assinaturas;
+  ///  * Top-ups   = não são receita até serem gastos.
   Widget _buildKpiSection() {
+    final rev = _revenue;
+    String money(int? v) => v == null ? '—' : '${_fmt(v)} Kup';
+
+    final cards = <Widget>[
+      _kpiCard(
+        title: 'RECEITA DA EMPRESA',
+        value: money(rev?.companyTotal),
+        icon: Icons.account_balance_wallet_rounded,
+        color: const Color(0xFFFF6B00),
+        subtitle: rev == null
+            ? 'Comissão + assinaturas + pacotes'
+            : 'Comissão ${_fmt(rev.commission)} · Assin. '
+                  '${_fmt(rev.subscriptionRevenue)} · Pacotes '
+                  '${_fmt(rev.packageRevenue)}',
+      ),
+      _kpiCard(
+        title: 'MOTORISTAS',
+        value: money(rev?.driverNet),
+        icon: Icons.drive_eta_rounded,
+        color: const Color(0xFF4CAF88),
+        subtitle: rev == null
+            ? 'Ganhos líquidos no período'
+            : 'Líquido de ${rev.drivers} motoristas · '
+                  '${_fmt(rev.grossFares)} Kup brutos',
+      ),
+      _kpiCard(
+        title: 'ASSINANTES',
+        value: rev == null ? '—' : '${rev.activeSubscribers}',
+        icon: Icons.workspace_premium_rounded,
+        color: const Color(0xFF5AB0FF),
+        subtitle: rev == null
+            ? 'Ativos com pagamento confirmado'
+            : '${rev.newSubscribers} novos · '
+                  '${_fmt(rev.subscriptionRevenue)} Kup',
+      ),
+      _kpiCard(
+        title: 'CORRIDAS / GMV',
+        value: rev == null ? '—' : '${rev.trips}',
+        icon: Icons.route_rounded,
+        color: const Color(0xFFB388FF),
+        subtitle: rev == null
+            ? 'Volume de tarifas no período'
+            : '${_fmt(rev.grossFares)} Kup em tarifas',
+      ),
+      _kpiCard(
+        title: 'SAQUES PENDENTES',
+        value: '$_pendingWithdrawsCount',
+        icon: Icons.hourglass_top_rounded,
+        color: const Color(0xFFF5C842),
+        subtitle: '${_fmt(_pendingWithdrawsAmount)} Kup aguardando',
+      ),
+      _kpiCard(
+        title: 'TOP-UPS PENDENTES',
+        value: '${_pendingTopups.length}',
+        icon: Icons.currency_exchange_rounded,
+        color: const Color(0xFF26C6DA),
+        subtitle: '${_fmt(_pendingTopupsAmount)} Kup a confirmar · '
+            'não é receita até ser gasto',
+      ),
+      _kpiCard(
+        title: 'ASSINATURAS PENDENTES',
+        value: '${_pendingSubs.length}',
+        icon: Icons.pending_actions_rounded,
+        color: const Color(0xFFFF8A65),
+        subtitle: '${_fmt(_pendingSubsAmount)} Kup em validação',
+      ),
+    ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 650;
-        if (isNarrow) {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  _kpiCard(
-                    title: 'RECEITA DE CORRIDAS',
-                    value: '${_fmt(_totalRevenue)} Kup',
-                    icon: Icons.trending_up_rounded,
-                    color: const Color(0xFFFF6B00),
-                    subtitle: 'Volume gerado por passageiros',
-                  ),
-                  const SizedBox(width: 12),
-                  _kpiCard(
-                    title: 'SAQUES PENDENTES',
-                    value: '$_pendingWithdrawsCount',
-                    icon: Icons.hourglass_top_rounded,
-                    color: const Color(0xFFF5C842),
-                    subtitle: '${_fmt(_pendingWithdrawsAmount)} Kup aguardando',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _kpiCard(
-                    title: 'RECARGAS PENDENTES',
-                    value: '${_pendingTopups.length}',
-                    icon: Icons.currency_exchange_rounded,
-                    color: const Color(0xFF4CAF88),
-                    subtitle: '${_fmt(_pendingTopupsAmount)} Kup a confirmar',
-                  ),
-                  const SizedBox(width: 12),
-                  _kpiCard(
-                    title: 'ASSINATURAS PENDENTES',
-                    value: '${_pendingSubs.length}',
-                    icon: Icons.workspace_premium_rounded,
-                    color: const Color(0xFF5AB0FF),
-                    subtitle: '${_fmt(_pendingSubsAmount)} Kup em pedidos',
-                  ),
-                ],
-              ),
-            ],
-          );
-        }
+        const spacing = 12.0;
+        final columns = constraints.maxWidth >= 1180
+            ? 4
+            : constraints.maxWidth >= 860
+            ? 3
+            : constraints.maxWidth >= 560
+            ? 2
+            : 1;
+        final width =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
-        return Row(
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
           children: [
-            _kpiCard(
-              title: 'RECEITA DE CORRIDAS',
-              value: '${_fmt(_totalRevenue)} Kup',
-              icon: Icons.trending_up_rounded,
-              color: const Color(0xFFFF6B00),
-              subtitle: 'Volume bruto de tarifas',
-            ),
-            const SizedBox(width: 12),
-            _kpiCard(
-              title: 'SAQUES PENDENTES',
-              value: '$_pendingWithdrawsCount',
-              icon: Icons.hourglass_top_rounded,
-              color: const Color(0xFFF5C842),
-              subtitle: '${_fmt(_pendingWithdrawsAmount)} Kup a liquidar',
-            ),
-            const SizedBox(width: 12),
-            _kpiCard(
-              title: 'TOP-UPS PENDENTES',
-              value: '${_pendingTopups.length}',
-              icon: Icons.currency_exchange_rounded,
-              color: const Color(0xFF4CAF88),
-              subtitle: '${_fmt(_pendingTopupsAmount)} Kup a confirmar',
-            ),
-            const SizedBox(width: 12),
-            _kpiCard(
-              title: 'ASSINATURAS',
-              value: '${_pendingSubs.length}',
-              icon: Icons.workspace_premium_rounded,
-              color: const Color(0xFF5AB0FF),
-              subtitle: '${_fmt(_pendingSubsAmount)} Kup em validação',
-            ),
+            for (final card in cards) SizedBox(width: width, child: card),
           ],
         );
       },
@@ -496,28 +647,28 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
     required Color color,
     required String subtitle,
   }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.22)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
                   title,
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 10,
@@ -525,39 +676,42 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
                     color: const Color(0xFFE2BFB0).withValues(alpha: 0.65),
                     letterSpacing: 0.6,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 14),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: color,
-                letterSpacing: -0.3,
+                child: Icon(icon, color: color, size: 14),
               ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: -0.3,
             ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 10.5,
-                color: const Color(0xFFE2BFB0).withValues(alpha: 0.5),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10.5,
+              color: const Color(0xFFE2BFB0).withValues(alpha: 0.5),
             ),
-          ],
-        ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

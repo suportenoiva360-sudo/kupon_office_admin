@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'revenue_repository.dart';
+
 /// Formata um número com separador de milhar (padrão pt-AO).
 ///
 /// Ex.: 1284590 → "1.284.590"
@@ -71,6 +73,22 @@ class DashboardSnapshot {
   final List<Map<String, dynamic>> topDrivers;
   final bool hadFailures;
 
+  // ── Receitas separadas (2026-11-09) ───────────────────────────
+  /// Comissão + assinaturas + pacotes de motoristas no período.
+  final int companyRevenue;
+  final int commissionRevenue;
+  final int subscriptionRevenue;
+  final int packageRevenue;
+
+  /// Ganhos líquidos dos motoristas (tarifa − comissão + gorjeta).
+  final int driverNet;
+  final int grossFares;
+
+  /// Assinantes ativos no fim do período e novos assinantes pagos no período.
+  final int activeSubscribers;
+  final int newSubscribers;
+  final int activePackages;
+
   const DashboardSnapshot({
     required this.revenue30d,
     required this.prevRevenue30d,
@@ -86,12 +104,22 @@ class DashboardSnapshot {
     required this.daily,
     required this.alerts,
     required this.topDrivers,
+    this.companyRevenue = 0,
+    this.commissionRevenue = 0,
+    this.subscriptionRevenue = 0,
+    this.packageRevenue = 0,
+    this.driverNet = 0,
+    this.grossFares = 0,
+    this.activeSubscribers = 0,
+    this.newSubscribers = 0,
+    this.activePackages = 0,
     this.hadFailures = false,
   });
 }
 
 class DashboardRepository {
   final SupabaseClient _client = Supabase.instance.client;
+  final RevenueRepository _revenue = RevenueRepository();
 
   Future<DashboardSnapshot> getSnapshot({
     DateTime? start,
@@ -142,7 +170,13 @@ class DashboardRepository {
       ),
       safe(getAlerts, <DashAlert>[]),
       safe(getTopDrivers, <Map<String, dynamic>>[]),
+      safe<RevenueSummary?>(
+        () => _revenue.summary(start: rangeStart, end: rangeEnd),
+        null,
+      ),
     ]);
+
+    final revenue = results[14] as RevenueSummary?;
 
     return DashboardSnapshot(
       revenue30d: results[0] as int,
@@ -159,6 +193,15 @@ class DashboardRepository {
       daily: results[11] as List<DailyPoint>,
       alerts: results[12] as List<DashAlert>,
       topDrivers: results[13] as List<Map<String, dynamic>>,
+      companyRevenue: revenue?.companyTotal ?? 0,
+      commissionRevenue: revenue?.commission ?? 0,
+      subscriptionRevenue: revenue?.subscriptionRevenue ?? 0,
+      packageRevenue: revenue?.packageRevenue ?? 0,
+      driverNet: revenue?.driverNet ?? 0,
+      grossFares: revenue?.grossFares ?? 0,
+      activeSubscribers: revenue?.activeSubscribers ?? 0,
+      newSubscribers: revenue?.newSubscribers ?? 0,
+      activePackages: revenue?.activePackages ?? 0,
       hadFailures: failedCount > 0,
     );
   }
