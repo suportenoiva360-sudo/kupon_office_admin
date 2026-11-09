@@ -913,6 +913,8 @@ class _AdminFaceReviewsPageState extends State<AdminFaceReviewsPage> {
       'imagem ${text('image')}',
       'planos ${text('planes')}',
       'rotação ${text('rotation')}',
+      'rotação usada ${text('rotation_used')}',
+      'sondagens ${text('rotation_probes')}',
       'fase ${text('phase')}',
     ];
 
