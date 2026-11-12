@@ -143525,14 +143525,14 @@ m=q.$1("centered")
 l=q.$1("errors")
 k=r.$1("last_error")
 j=n===0&&p>0?B.an:B.ad
-i=["frames "+A.f(p),"sem rosto "+A.f(o),"1 rosto "+A.f(n),"centrados "+A.f(m),"olhos "+A.f(r.$1("eye_signal")),"yaw "+A.f(r.$1("yaw_signal")),"erros "+A.f(l),"formato "+A.f(r.$1("stream_format")),"imagem "+A.f(r.$1("image")),"planos "+A.f(r.$1("planes")),"rota\xe7\xe3o "+A.f(r.$1("rotation")),"fase "+A.f(r.$1("phase"))]
+i=["frames "+A.f(p),"sem rosto "+A.f(o),"1 rosto "+A.f(n),"centrados "+A.f(m),"olhos "+A.f(r.$1("eye_signal")),"yaw "+A.f(r.$1("yaw_signal")),"erros "+A.f(l),"formato "+A.f(r.$1("stream_format")),"imagem "+A.f(r.$1("image")),"planos "+A.f(r.$1("planes")),"rota\xe7\xe3o "+A.f(r.$1("rotation")),"rota\xe7\xe3o usada "+A.f(r.$1("rotation_used")),"sondagens "+A.f(r.$1("rotation_probes")),"fase "+A.f(r.$1("phase"))]
 h=B.b0.n(0.4)
 g=A.B(10)
 f=A.ah(j.n(0.35),1)
 e=t.p
 d=A.H(A.a([A.aw(B.DO,j,a0,14),B.bA,A.a8(A.m("Diagn\xf3stico da tentativa",a0,a0,a0,a0,A.l().$3$color$fontSize$fontWeight(j,11,B.D),a0,a0,a0),1),A.m("sa\xedda "+A.f(r.$1("outcome")),a0,a0,a0,a0,A.l().$2$color$fontSize(a2,10.5),a0,a0,a0)],e),B.v,B.q,B.r,0)
 c=A.a([],e)
-for(b=0;b<12;++b){a=new A.bl(6,6)
+for(b=0;b<14;++b){a=new A.bl(6,6)
 c.push(A.E(a0,A.m(i[b],a0,a0,a0,a0,A.l().$2$color$fontSize(B.t,10.5),a0,a0,a0),B.u,a0,a0,new A.I(B.am,a0,a0,new A.du(a,a,a,a),a0,a0,a0,B.B),a0,a0,a0,B.a8Y,a0,a0,a0))}d=A.a([d,B.aR,A.iw(c,6,6)],e)
 if(k.length!==0&&k!=="\u2014")B.h.F(d,A.a([B.aR,A.m("\xdaltimo erro: "+k,3,B.ab,a0,a0,A.l().$2$color$fontSize(B.an,10.5),a0,a0,a0)],e))
 return A.E(a0,A.a6(d,B.O,B.q,B.r),B.u,a0,a0,new A.I(h,a0,f,g,a0,a0,a0,B.B),a0,a0,B.CA,B.lu,a0,a0,a0)},
