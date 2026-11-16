@@ -8,8 +8,9 @@ icons_launcher:
     web:
       enable: true
       image_path: "assets/images/icon.png"
-      background_color: "#E5E2E1"
-      theme_color: "#E5E2E1"
+      maskable_image_path: "assets/images/icon.png"
+      background_color: "#000000"
+      theme_color: "#FE4500"
     windows:
       enable: true
       image_path: "assets/images/icon.png"
