@@ -105,6 +105,12 @@ class _AdminShellState extends State<AdminShell> {
       selectedIcon: Icons.cancel_presentation_rounded,
       label: 'Cancelamentos e Dívidas',
     ),
+    _NavDestination(
+      branchIndex: 13,
+      icon: Icons.route_outlined,
+      selectedIcon: Icons.route_rounded,
+      label: 'Viagens e Trajetos',
+    ),
   ];
 
   @override

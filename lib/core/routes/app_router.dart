@@ -19,6 +19,7 @@ import 'package:kupon_office_admin/features/admin/presentation/pages/admin_confi
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_map_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_cancelamentos_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/pages/admin_face_reviews_page.dart';
+import 'package:kupon_office_admin/features/admin/presentation/pages/admin_trips_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -208,6 +209,16 @@ final GoRouter appRouter = GoRouter(
               path: '/cancelamentos',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: AdminCancelamentosPage(),
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/viagens',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: AdminTripsPage(),
               ),
             ),
           ],

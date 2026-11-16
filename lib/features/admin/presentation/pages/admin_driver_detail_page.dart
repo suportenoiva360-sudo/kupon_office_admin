@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kupon_office_admin/app/theme/app_theme.dart';
 import 'package:kupon_office_admin/core/widgets/kupon_loader.dart';
 import 'package:kupon_office_admin/app/widgets/profile_cover_header.dart';
+import 'package:kupon_office_admin/features/admin/presentation/pages/admin_trip_trail_page.dart';
 import 'package:kupon_office_admin/features/admin/presentation/widgets/admin_driver_documents.dart';
 import 'package:kupon_office_admin/repositories/driver_repository.dart';
 import 'package:kupon_office_admin/repositories/dashboard_repository.dart'
@@ -54,7 +56,12 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
       final trips = await _db
           .from('trips')
           .select(
-            'id, status, category, created_at, pickup_name, destination_name, estimated_fare',
+            'id, status, category, created_at, completed_at, '
+            'pickup_name, destination_name, pickup_lat, pickup_lng, '
+            'destination_lat, destination_lng, distance, traveled_km, '
+            'duration, fare, estimated_fare, '
+            'passenger:users!trips_passenger_id_fkey(name), '
+            'driver:drivers!trips_driver_id_fkey(user:users(name))',
           )
           .eq('driver_id', widget.driverId)
           .order('created_at', ascending: false)
@@ -804,14 +811,29 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
       );
     }
     return Column(
-      children: _trips
-          .map(
-            (t) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildTripTile(t),
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => context.go('/viagens'),
+            icon: const Icon(Icons.route_rounded, size: 16),
+            label: Text(
+              'Ver todas as viagens',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.primaryContainer,
+              ),
             ),
-          )
-          .toList(),
+          ),
+        ),
+        ..._trips.map(
+          (t) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _buildTripTile(t),
+          ),
+        ),
+      ],
     );
   }
 
@@ -823,83 +845,104 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
     final fare = trip['estimated_fare'];
     final date = _fmtDate(trip['created_at']);
     final statusColor = _statusColor(status);
+    final hasCoordinates =
+        trip['pickup_lat'] != null && trip['destination_lat'] != null;
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerHighest,
+    return Material(
+      color: AppTheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.directions_car_rounded,
-              color: statusColor,
-              size: 20,
-            ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => AdminTripTrailPage(trip: trip),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      _catLabel(category),
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFE5E2E1),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _chip(status, statusColor),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$pickup → $dest',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
-                    color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.outlineVariant),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Row(
             children: [
-              Text(
-                date,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 11,
-                  color: const Color(0xFFE2BFB0).withValues(alpha: 0.5),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  hasCoordinates
+                      ? Icons.route_rounded
+                      : Icons.directions_car_rounded,
+                  color: statusColor,
+                  size: 20,
                 ),
               ),
-              if (fare != null)
-                Text(
-                  '$fare Kz',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    color: AppTheme.primaryContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          _catLabel(category),
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE5E2E1),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _chip(status, statusColor),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$pickup → $dest',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        color: const Color(0xFFE2BFB0).withValues(alpha: 0.6),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    date,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: const Color(0xFFE2BFB0).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  if (fare != null)
+                    Text(
+                      '$fare Kz',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        color: AppTheme.primaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
