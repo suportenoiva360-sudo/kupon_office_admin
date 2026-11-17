@@ -380,7 +380,8 @@ class _AdminDriverDetailPageState extends State<AdminDriverDetailPage> {
     final packageActive =
         packageId != null &&
         packageId.isNotEmpty &&
-        (packageExpires == null || packageExpires.isAfter(DateTime.now()));
+        packageExpires != null &&
+        packageExpires.isAfter(DateTime.now());
     final packageUsed = _driver?['package_trips_used'] as int? ?? 0;
     final totalEarnings = _stats?['total_earnings'] as int? ?? 0;
 

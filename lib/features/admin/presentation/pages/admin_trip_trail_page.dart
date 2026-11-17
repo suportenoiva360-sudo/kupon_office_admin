@@ -77,7 +77,7 @@ class _AdminTripTrailPageState extends State<AdminTripTrailPage> {
         pickup: pickup,
         destination: destination,
       );
-      _route = route.isEmpty ? [pickup, destination] : route;
+      _route = route;
     }
 
     _deviationRuns = TripGeometry.deviationRuns(_trail, _route);

@@ -2,11 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Resumo de receitas devolvido por `admin_revenue_summary`.
 ///
-/// Definições aprovadas (2026-11-09):
-///   * empresa = comissão das corridas + assinaturas + pacotes de motoristas;
-///   * motoristas = ganhos líquidos (tarifa − comissão + gorjeta);
-///   * assinantes = subscrições ativas com pagamento confirmado;
-///   * top-ups não entram como receita.
+/// Modelo comercial KupON: a receita vem de pacotes de motoristas aprovados
+/// e de assinaturas pagas. Não existe comissão por viagem.
+/// Top-ups não entram como receita.
 class RevenueSummary {
   const RevenueSummary({
     required this.start,
@@ -50,10 +48,10 @@ class RevenueSummary {
   final int activePackages;
   final int packageRevenue;
 
-  /// Comissão das corridas no período (componente da receita da empresa).
+  /// Campo legado mantido por compatibilidade; o servidor devolve sempre zero.
   final int commission;
 
-  /// Comissão + assinaturas + pacotes.
+  /// Assinaturas pagas + compras de pacotes aprovadas.
   final int companyTotal;
 
   int get companySubscriptions => subscriptionRevenue;

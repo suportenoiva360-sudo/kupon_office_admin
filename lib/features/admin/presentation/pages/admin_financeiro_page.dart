@@ -542,11 +542,9 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
 
   /// Cartões de receitas separadas.
   ///
-  /// Definições aprovadas pelo operador (2026-11-09):
-  ///  * Empresa   = comissão + assinaturas + pacotes de motoristas;
-  ///  * Motoristas= ganhos líquidos (tarifa − comissão + gorjeta);
-  ///  * Assinantes= ativos com pagamento confirmado + receita das assinaturas;
-  ///  * Top-ups   = não são receita até serem gastos.
+  /// Modelo comercial KupON: receita da plataforma vem dos pacotes dos motoristas
+  /// e das assinaturas pagas; não existe comissão por viagem.
+  /// Top-ups não são receita até serem gastos.
   Widget _buildKpiSection() {
     final rev = _revenue;
     String money(int? v) => v == null ? '—' : '${_fmt(v)} Kup';
@@ -558,9 +556,8 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
         icon: Icons.account_balance_wallet_rounded,
         color: const Color(0xFFFF6B00),
         subtitle: rev == null
-            ? 'Comissão + assinaturas + pacotes'
-            : 'Comissão ${_fmt(rev.commission)} · Assin. '
-                  '${_fmt(rev.subscriptionRevenue)} · Pacotes '
+            ? 'Assinaturas pagas + pacotes aprovados'
+            : 'Assin. ${_fmt(rev.subscriptionRevenue)} · Pacotes '
                   '${_fmt(rev.packageRevenue)}',
       ),
       _kpiCard(
@@ -569,9 +566,9 @@ class _AdminFinanceiroPageState extends State<AdminFinanceiroPage>
         icon: Icons.drive_eta_rounded,
         color: const Color(0xFF4CAF88),
         subtitle: rev == null
-            ? 'Ganhos líquidos no período'
-            : 'Líquido de ${rev.drivers} motoristas · '
-                  '${_fmt(rev.grossFares)} Kup brutos',
+            ? 'Ganhos dos motoristas no período'
+            : 'Ganhos de ${rev.drivers} motoristas · '
+                  '${_fmt(rev.grossFares)} Kup em tarifas e gorjetas',
       ),
       _kpiCard(
         title: 'ASSINANTES',

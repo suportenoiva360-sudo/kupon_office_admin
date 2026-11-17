@@ -73,14 +73,14 @@ class DashboardSnapshot {
   final List<Map<String, dynamic>> topDrivers;
   final bool hadFailures;
 
-  // ── Receitas separadas (2026-11-09) ───────────────────────────
-  /// Comissão + assinaturas + pacotes de motoristas no período.
+  // ── Receitas segundo o modelo comercial KupON ─────────────────
+  /// Assinaturas pagas + pacotes de motoristas aprovados; sem comissão por viagem.
   final int companyRevenue;
   final int commissionRevenue;
   final int subscriptionRevenue;
   final int packageRevenue;
 
-  /// Ganhos líquidos dos motoristas (tarifa − comissão + gorjeta).
+  /// Ganhos dos motoristas (tarifa + gorjeta), sem desconto de comissão.
   final int driverNet;
   final int grossFares;
 

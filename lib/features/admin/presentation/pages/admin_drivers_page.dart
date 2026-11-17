@@ -1138,7 +1138,8 @@ class _AdminDriversPageState extends State<AdminDriversPage>
     final packageActive =
         packageId != null &&
         packageId.isNotEmpty &&
-        (packageExpires == null || packageExpires.isAfter(DateTime.now()));
+        packageExpires != null &&
+        packageExpires.isAfter(DateTime.now());
     final packageUsed = d['package_trips_used'] as int? ?? 0;
     final isOnline = d['is_online'] as bool? ?? false;
     final isApproved = d['is_approved'] as bool? ?? false;

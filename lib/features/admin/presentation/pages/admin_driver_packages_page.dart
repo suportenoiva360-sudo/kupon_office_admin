@@ -21,6 +21,7 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
   final _db = Supabase.instance.client;
   bool _loading = true;
   List<Map<String, dynamic>> _packages = [];
+  List<Map<String, dynamic>> _pendingPurchases = [];
   final Map<String, Map<String, dynamic>> _settings = {};
 
   @override
@@ -35,10 +36,18 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
       final results = await Future.wait([
         _db.from('driver_packages').select('*').order('price'),
         _db.from('kupon_settings').select('key, value'),
+        _db
+            .from('driver_package_purchases')
+            .select(
+              '*, driver:drivers!driver_package_purchases_driver_id_fkey(id, user:users!drivers_user_id_fkey(name, phone))',
+            )
+            .eq('status', 'pending')
+            .order('purchased_at'),
       ]);
       if (!mounted) return;
       setState(() {
         _packages = List<Map<String, dynamic>>.from(results[0] as List);
+        _pendingPurchases = List<Map<String, dynamic>>.from(results[2] as List);
         _settings.clear();
         for (final row in List<Map<String, dynamic>>.from(results[1] as List)) {
           _settings[row['key'] as String] = row;
@@ -65,6 +74,216 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
     RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
     (m) => '${m[1]}.',
   );
+
+  Future<void> _reviewPurchase(
+    Map<String, dynamic> purchase, {
+    required bool approve,
+  }) async {
+    String? reason;
+    final driver = purchase['driver'] is Map
+        ? Map<String, dynamic>.from(purchase['driver'] as Map)
+        : <String, dynamic>{};
+    final user = driver['user'] is Map
+        ? Map<String, dynamic>.from(driver['user'] as Map)
+        : <String, dynamic>{};
+    final driverName =
+        user['name']?.toString() ?? purchase['driver_id'].toString();
+    if (approve) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.surfaceContainerLow,
+          title: const Text('Confirmar pagamento recebido?'),
+          content: Text(
+            'Confirme que recebeu ${_fmtKz((purchase['amount'] as num?)?.toInt() ?? 0)} Kz '
+            'do motorista $driverName por ${purchase['package_name']}. '
+            'O pacote só será activado após esta confirmação.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Voltar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirmar recebimento'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    } else {
+      final controller = TextEditingController();
+      reason = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.surfaceContainerLow,
+          title: const Text('Rejeitar pedido'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Motivo da rejeição',
+              hintText: 'Ex.: pagamento não localizado',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Voltar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (controller.text.trim().isEmpty) return;
+                Navigator.pop(ctx, controller.text.trim());
+              },
+              child: const Text('Rejeitar pedido'),
+            ),
+          ],
+        ),
+      );
+      if (reason == null || reason.trim().isEmpty) return;
+    }
+
+    try {
+      await _db.rpc(
+        'admin_review_driver_package_purchase',
+        params: {
+          'p_purchase_id': purchase['id'],
+          'p_decision': approve ? 'approved' : 'rejected',
+          'p_rejection_reason': reason,
+        },
+      );
+      _snack(
+        approve ? 'Pagamento aprovado. Pacote activado.' : 'Pedido rejeitado.',
+      );
+      await _load();
+    } catch (e) {
+      _snack('Não foi possível analisar o pedido: $e', error: true);
+    }
+  }
+
+  Widget _buildPendingPurchases() {
+    if (_pendingPurchases.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppTheme.outlineVariant.withValues(alpha: 0.45),
+          ),
+        ),
+        child: const Text(
+          'Não existem pagamentos de pacotes à espera de aprovação.',
+          style: TextStyle(color: AppTheme.onSurfaceVariant),
+        ),
+      );
+    }
+
+    return Column(
+      children: _pendingPurchases.map((purchase) {
+        final driverId = purchase['driver_id']?.toString() ?? '';
+        final driver = purchase['driver'] is Map
+            ? Map<String, dynamic>.from(purchase['driver'] as Map)
+            : <String, dynamic>{};
+        final user = driver['user'] is Map
+            ? Map<String, dynamic>.from(driver['user'] as Map)
+            : <String, dynamic>{};
+        final driverName =
+            user['name']?.toString() ??
+            (driverId.length > 12 ? driverId.substring(0, 8) : driverId);
+        final driverPhone = user['phone']?.toString();
+        final reference = purchase['payment_reference']?.toString();
+        final created = DateTime.tryParse(
+          purchase['purchased_at']?.toString() ?? '',
+        )?.toLocal();
+        final amount = (purchase['amount'] as num?)?.toInt() ?? 0;
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFFFB74D).withValues(alpha: 0.5),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.pending_actions_rounded,
+                    color: Color(0xFFFFB74D),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      purchase['package_name']?.toString() ?? 'Pacote',
+                      style: const TextStyle(
+                        color: AppTheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${_fmtKz(amount)} Kz',
+                    style: const TextStyle(
+                      color: AppTheme.primaryContainer,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Motorista: $driverName',
+                style: const TextStyle(color: AppTheme.onSurfaceVariant),
+              ),
+              if (driverPhone != null && driverPhone.isNotEmpty)
+                Text(
+                  'Contacto: $driverPhone',
+                  style: const TextStyle(color: AppTheme.onSurfaceVariant),
+                ),
+              Text(
+                'Referência: ${reference?.isNotEmpty == true ? reference : 'Não indicada'}',
+                style: const TextStyle(color: AppTheme.onSurfaceVariant),
+              ),
+              Text(
+                'Pedido: ${created == null ? 'Data indisponível' : created.toString().substring(0, 16)}',
+                style: const TextStyle(color: AppTheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _reviewPurchase(purchase, approve: true),
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Aprovar e activar'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _reviewPurchase(purchase, approve: false),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    label: const Text('Rejeitar'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
 
   // ---------------------------------------------------------------
   // Pacotes CRUD Form (Dialog Responsivo)
@@ -590,6 +809,52 @@ class _AdminDriverPackagesPageState extends State<AdminDriverPackagesPage> {
                             );
                           },
                         ),
+
+                      const SizedBox(height: 36),
+                      const Divider(height: 1, color: AppTheme.outlineVariant),
+                      const SizedBox(height: 28),
+
+                      Row(
+                        children: [
+                          _sectionTitle(
+                            'Pagamentos Multicaixa por Aprovar',
+                            Icons.fact_check_outlined,
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFFFB74D,
+                              ).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${_pendingPurchases.length} pendentes',
+                              style: const TextStyle(
+                                color: Color(0xFFFFB74D),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Verifique o recebimento na conta da KupON antes de aprovar. A aprovação activa o pacote; a rejeição não altera o acesso do motorista.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _loading
+                          ? const Center(child: KuponLoader())
+                          : _buildPendingPurchases(),
 
                       const SizedBox(height: 36),
                       const Divider(height: 1, color: AppTheme.outlineVariant),
